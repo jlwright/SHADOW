@@ -1,0 +1,57 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "${workspaceFolder}/libraries/**",
+                "C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/*",
+                "C:/Program Files (x86)/Arduino/hardware/tools/avr/avr/include/avr/",
+                "${workspaceFolder}/libraries/CytronMotorDriver/**",
+                "C:/Program Files (x86)/Arduino/hardware/tools/avr/avr/include"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
+            ],
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "windows-msvc-x64"
+        },
+        {
+            "name": "Arduino",
+            "includePath": [
+                "c:/Users/star_/Documents/R2/SHADOW/SHADOW/libraries/**",
+                "C:/Program Files (x86)/Arduino/libraries/**",
+                "C:/Users/star_/Documents/Arduino/libraries/**",
+                "C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/**",
+                "C:/Program Files (x86)/Arduino/hardware/tools/avr/avr/include/avr/*",
+                "C:/Users/star_/Documents/R2/SHADOW/SHADOW/libraries/USB_Host_Shield/*"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
+            ],
+            "windowsSdkVersion": "10.0.22621.0",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "windows-clang-arm64",
+            "mergeConfigurations": false,
+            "compilerPath": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\Llvm\\x64\\bin\\clang.exe",
+            "browse": {
+                "path": [
+                    "c:/Users/star_/Documents/R2/SHADOW/SHADOW/libraries/**",
+                    "C:/Program Files (x86)/Arduino/libraries/**",
+                    "C:/Users/star_/Documents/Arduino/libraries/**",
+                    "C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/**",
+                    "C:/Program Files (x86)/Arduino/hardware/tools/avr/avr/include/avr/*",
+                    "C:/Users/star_/Documents/R2/SHADOW/SHADOW/libraries/USB_Host_Shield/PS3BT.h",
+                    "${workspaceFolder}"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            }
+        }
+    ],
+    "version": 4
+}

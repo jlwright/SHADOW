@@ -18,11 +18,11 @@
 #ifndef _ADAFRUIT_PWMServoDriver_H
 #define _ADAFRUIT_PWMServoDriver_H
 
-#if ARDUINO >= 100
+// #if ARDUINO >= 100
  #include "Arduino.h"
-#else
- #include "WProgram.h"
-#endif
+// #else
+//  #include "WProgram.h"
+// #endif
 
 
 #define PCA9685_SUBADR1 0x2

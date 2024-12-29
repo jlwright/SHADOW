@@ -20,6 +20,7 @@
 
 #include "BTD.h"
 #include "PS3Enums.h"
+#include <WString.h>
 
 #define HID_BUFFERSIZE 50 // Size of the buffer for the Playstation Motion Controller
 

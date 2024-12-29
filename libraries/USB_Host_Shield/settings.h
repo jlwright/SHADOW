@@ -81,10 +81,11 @@ e-mail   :  support@circuitsathome.com
 #if defined(ARDUINO) && ARDUINO >=100
 #include <Arduino.h>
 #else
-#include <WProgram.h>
-#include <pins_arduino.h>
-#include <avr/pgmspace.h>
-#include <avr/io.h>
+// #include <Arduino.h>
+// #include <WProgram.h>
+// #include <pins_arduino.h>
+// #include <avr/pgmspace.h>
+// #include <avr/io.h>
 #define F(str) (str)
 #endif
 

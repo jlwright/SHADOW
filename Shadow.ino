@@ -52,31 +52,124 @@
 //         Some place a 10K ohm resistor between S1 & GND on the SyRen 10 itself
 //
 // =======================================================================================
-//
+
+
+// ---------------------------------------------------------------------------------------
+//                          Drive Controller Settings
+// ---------------------------------------------------------------------------------------
+int motorControllerBaudRate = 9600; // Set the baud rate for the Syren motor controller
+                                    // for packetized options are: 2400, 9600, 19200 and 38400
+                                    
+#define SYREN_ADDR 129      // Serial Address for Dome Syren
+// #define SABERTOOTH_ADDR 128      // Serial Address for Foot Sabertooth
+#define CYTRON_ADDR 128      // Serial Address for Cytron motor controller
+
+#define SteeringFactor 100 //used for steering system speed, higher is faster
+
+// R/C Mode settings...
+#define leftFootPin 44    //connect this pin to motor controller for left foot (R/C mode)
+#define rightFootPin 45   //connect this pin to motor controller for right foot (R/C mode)
+#define leftDirection 1   //change this if your motor is spinning the wrong way
+#define rightDirection 0  //change this if your motor is spinning the wrong way  
+
+
+// ---------------------------------------------------------------------------------------
+//                          Sound Settings
+// ---------------------------------------------------------------------------------------
+//Uncomment one line based on your sound system
+#define SOUND_CFSOUNDIII     //Original system tested with SHADOW
+//#define SOUND_MP3TRIGGER   //Code Tested by Dave C. and Marty M.
+//#define SOUND_ROGUE_RMP3   //Support coming soon
+//#define SOUND_RASBERRYPI   //Support coming soon
+//#define EXTRA_SOUNDS
+
+
+// ---------------------------------------------------------------------------------------
+//                          Dome Control System
+// ---------------------------------------------------------------------------------------
+//Uncomment one line based on your Dome Control
+#define DOME_I2C_ADAFRUIT       //Current SHADOW configuration used with R-Series Logics
+//#define DOME_SERIAL_TEECES    //Original system tested with SHADOW
+//#define DOME_I2C_TEECES       //Untested Nov 2014
+
+
+// ---------------------------------------------------------------------------------------
+//                          Libraries
+// ---------------------------------------------------------------------------------------
+#define ARDUINO 101 //setting ARDUINO to get rid of WProgram.h errors
+#include <PS3BT.h>
+#include <Arduino.h>
+#include <SPP.h>
+#include <usbhub.h>
+// Satisfy IDE, which only needs to see the include statment in the ino.
+#ifdef dobogusinclude
+  #include <spi4teensy3.h>
+#endif
+#include <Sabertooth.h>
+#include <CytronMotorDriver.h>
+#include <Servo.h>
+#include <LedControl.h>
+
+#ifdef DOME_SERIAL_TEECES    
+#include <EasyTransfer.h>
+#endif
+
+#ifdef DOME_I2C_TEECES    
+#include <EasyTransferI2C.h>
+#endif
+
+//#ifdef DOME_I2C_ADAFRUIT    
+#include <Wire.h>
+#include <Adafruit_PWMServoDriver.h>
+//#include <Servos.h>  //Attempted to use the "SlowServo library from BHD.... had issues
+//#endif
+
+//This is the traditional sound controler that has been used with PADAWAN
+#ifdef SOUND_MP3TRIGGER
+  #include <MP3Trigger.h>
+  MP3Trigger trigger;
+#endif
+
+//Custom written Libraryy for the old CFSoundIII to emulate 12 button remote
+//CFSoundIII needs a supporting CFSOUND.BAS version running on the CFSoundIII 
+#ifdef SOUND_CFSOUNDIII
+  #include <CFSoundIII.h>
+  CFSoundIII cfSound;
+#endif
+#include <HardwareSerial.h>
+#include <USBAPI.h>
+
+//#ifdef  SOUND_ROGUE_RMP3
+//TODO:add rMP3 support
+//#endif
+//#ifdef  SOUND_RASBERRYPI
+//TODO:add Raspberry Pi Sound support
+//#endif
+
+
 // ---------------------------------------------------------------------------------------
 //                          User Settings
 // ---------------------------------------------------------------------------------------
-
 //Primary Controller bound to Gmyle Class 1 Adapter 
 //String PS3MoveNavigatonPrimaryMAC = "04:76:6E:87:B0:F5"; //If using multiple controlers, designate a primary
 
 //Primary Controller bound to Parani UD-100 
 String PS3MoveNavigatonPrimaryMAC = "00:07:04:05:EA:DF"; //If using multiple controlers, designate a primary
+// String PS3MoveNavigatonSecondaryMAC = "00:07:04:05:EA:DF";
 
-#define FOOT_CONTROLLER 1 //0 for Sabertooth Serial or 1 for individual R/C output (for Q85/NEO motors with 1 controller for each foot, or Sabertooth Mode 2 Independant Mixing)
+#define FOOT_CONTROLLER 3 //0 for Sabertooth Serial or 
+                          //1 for individual R/C output (for Q85/NEO motors with 1 controller for each foot) or  
+                          //2 for Sabertooth Mode Independant Mixing or 
+                          //3 for Cytron SmartDriveDuo-30
 
-byte drivespeed1 = 25;   //set these 3 to whatever speeds work for you. 0-stop, 127-full speed.
+byte drivespeed1 = 25;  //set these 3 to whatever speeds work for you. 0-stop, 127-full speed.
 byte drivespeed2 = 65;  //Recommend beginner: 50 to 75, experienced: 100 to 127, I like 100.
-
-byte turnspeed = 75; //50;     // the higher this number the faster it will spin in place, lower - easier to control.
-                         // Recommend beginner: 40 to 50, experienced: 50 $ up, I like 75
-
-byte domespeed = 100;    // If using a speed controller for the dome, sets the top speed
-                         // Use a number up to 127 for serial
-
-byte ramping = 6; //3;        // Ramping- the lower this number the longer R2 will take to speedup or slow down,
+byte turnspeed = 50;    // the higher this number the faster it will spin in place, lower - easier to control.
+                        // Recommend beginner: 40 to 50, experienced: 50 $ up, I like 75
+byte domespeed = 100;   // If using a speed controller for the dome, sets the top speed, use a number up to 127 for serial
+byte ramping = 6;       // Ramping- the lower this number the longer R2 will take to speedup or slow down,
                          // change this by increments of 1
-int footDriveSpeed = 0;  //This was moved to be global to support better ramping of NPC Motors
+int footDriveSpeed = 0; //This was moved to be global to support better ramping of NPC Motors
 
 byte joystickFootDeadZoneRange = 15;  // For controllers that centering problems, use the lowest number with no drift
 byte joystickDomeDeadZoneRange = 10;  // For controllers that centering problems, use the lowest number with no drift
@@ -94,50 +187,10 @@ int time360DomeTurnRight = 300;  // milliseconds for dome to complete 360 turn a
 //#define BLUETOOTH_SERIAL     //uncomment this for console output via bluetooth.  
 // NOTE:  BLUETOOTH_SERIAL is suspected of adding CPU load in high traffic areas
 
-// ---------------------------------------------------------------------------------------
-//                          Drive Controller Settings
-// ---------------------------------------------------------------------------------------
-
-int motorControllerBaudRate = 9600; // Set the baud rate for the Syren motor controller
-                                    // for packetized options are: 2400, 9600, 19200 and 38400
-                                    
-#define SYREN_ADDR         129      // Serial Address for Dome Syren
-#define SABERTOOTH_ADDR    128      // Serial Address for Foot Sabertooth
-
-// R/C Mode settings...
-#define leftFootPin 44    //connect this pin to motor controller for left foot (R/C mode)
-#define rightFootPin 45   //connect this pin to motor controller for right foot (R/C mode)
-#define leftDirection 1   //change this if your motor is spinning the wrong way
-#define rightDirection 0  //change this if your motor is spinning the wrong way  
-
-
-// ---------------------------------------------------------------------------------------
-//                          Sound Settings
-// ---------------------------------------------------------------------------------------
-//Uncomment one line based on your sound system
-#define SOUND_CFSOUNDIII     //Original system tested with SHADOW
-//#define SOUND_MP3TRIGGER   //Code Tested by Dave C. and Marty M.
-//#define SOUND_ROGUE_RMP3   //Support coming soon
-//#define SOUND_RASBERRYPI   //Support coming soon
-
-//#define EXTRA_SOUNDS
-
-
-// ---------------------------------------------------------------------------------------
-//                          Dome Control System
-// ---------------------------------------------------------------------------------------
-//Uncomment one line based on your Dome Control
-#define DOME_I2C_ADAFRUIT       //Current SHADOW configuration used with R-Series Logics
-//#define DOME_SERIAL_TEECES    //Original system tested with SHADOW
-//#define DOME_I2C_TEECES       //Untested Nov 2014
-
-
-
 
 // ---------------------------------------------------------------------------------------
 //                          Utility Arm Settings
 // ---------------------------------------------------------------------------------------
-
 //Utility Arm Contribution by Dave C.
 //TODO:  Move PINS to upper part of Mega for Shield purposes
 const int UTILITY_ARM_TOP_PIN   = 49;
@@ -147,8 +200,8 @@ int utilArmClosedPos = 0;    // variable to store the servo closed position
 int utilArmOpenPos = 140;    // variable to store the servo Opened position 
 
 // Check value, open = true, closed = false
-boolean isUtilArmTopOpen = false;    
-boolean isUtilArmBottomOpen = false;
+bool isUtilArmTopOpen = false;    
+bool isUtilArmBottomOpen = false;
 
 int UtilArmBottomPos = 0;
 int UtilArmTopPos = 0;
@@ -159,68 +212,17 @@ const int UTIL_ARM_BOTTOM = 2;
 // ---------------------------------------------------------------------------------------
 //                          LED Settings
 // ---------------------------------------------------------------------------------------
-
 //Coin Slot LED Contribution by Dave C.
 //TODO:  Move PINS to upper part of Mega for Shield purposes
-#define numberOfCoinSlotLEDs 3
-int COIN_SLOT_LED_PINS[] = { 47, 48, 49 }; // LED pins to use.
-long nextCoinSlotLedFlash[numberOfCoinSlotLEDs]; // Array indicating which LED to flash next.
-int coinSlotLedState[numberOfCoinSlotLEDs]; // Array indicating the state of the LED's.
-
-
-// ---------------------------------------------------------------------------------------
-//                          Libraries
-// ---------------------------------------------------------------------------------------
-#include <PS3BT.h>
-#include <SPP.h>
-#include <usbhub.h>
-// Satisfy IDE, which only needs to see the include statment in the ino.
-#ifdef dobogusinclude
-#include <spi4teensy3.h>
-#endif
-#include <Sabertooth.h>
-#include <Servo.h>
-#include <LedControl.h>
-
-#ifdef DOME_SERIAL_TEECES    
-#include <EasyTransfer.h>
-#endif
-
-#ifdef DOME_I2C_TEECES    
-#include <EasyTransferI2C.h>
-#endif
-
-#ifdef DOME_I2C_ADAFRUIT    
-#include <Wire.h>
-#include <Adafruit_PWMServoDriver.h>
-//#include <Servos.h>  //Attempted to use the "SlowServo library from BHD.... had issues
-#endif
-
-//This is the traditional sound controler that has been used with PADAWAN
-#ifdef SOUND_MP3TRIGGER
-#include <MP3Trigger.h>
-MP3Trigger trigger;
-#endif
-
-//Custom written Libraryy for the old CFSoundIII to emulate 12 button remote
-//CFSoundIII needs a supporting CFSOUND.BAS version running on the CFSoundIII 
-#ifdef SOUND_CFSOUNDIII
-#include <CFSoundIII.h>
-CFSoundIII cfSound;
-#endif
-
-//#ifdef  SOUND_ROGUE_RMP3
-//TODO:add rMP3 support
-//#endif
-//#ifdef  SOUND_RASBERRYPI
-//TODO:add Raspberry Pi Sound support
-//#endif
+// #define numberOfCoinSlotLEDs 3
+// int COIN_SLOT_LED_PINS[] = { 47, 48, 49 }; // LED pins to use.
+// long nextCoinSlotLedFlash[numberOfCoinSlotLEDs]; // Array indicating which LED to flash next.
+// int coinSlotLedState[numberOfCoinSlotLEDs]; // Array indicating the state of the LED's.
 
 
 // ---------------------------------------------------------------------------------------
 //                          Variables
 // ---------------------------------------------------------------------------------------
-
 long previousDomeMillis = millis();
 long previousFootMillis = millis();
 long currentMillis = millis();
@@ -228,10 +230,12 @@ int serialLatency = 25;   //This is a delay factor in ms to prevent queueing of 
                           //25ms seems appropriate for HardwareSerial, values of 50ms or larger are needed for Softare Emulation
 
 #if FOOT_CONTROLLER == 0
-Sabertooth *ST=new Sabertooth(SABERTOOTH_ADDR, Serial2);
+  Sabertooth *ST=new Sabertooth(SABERTOOTH_ADDR, Serial2);
+#elif FOOT_CONTROLLER == 3
+  CytronMD FootMotorRight= CytronMD(PWM_PWM,3,4); //PWM 1A = Pin 3, PWM 1B = Pin 4
+  CytronMD FootMotorLeft= CytronMD(PWM_PWM,5,6); //PWM 1A = Pin 5, PWM 1B = Pin 6
 #endif
 Sabertooth *SyR=new Sabertooth(SYREN_ADDR, Serial2);
-
 
 #ifdef DOME_SERIAL_TEECES    
     EasyTransfer ET;
@@ -254,7 +258,6 @@ Sabertooth *SyR=new Sabertooth(SYREN_ADDR, Serial2);
     };         // 21=speed1, 22=speed2, 23=speed3, 24=logics+, 25=logics-
     SEND_DATA_STRUCTURE domeData;//give a name to the group of data
 #endif 
-
 
 #ifdef DOME_I2C_ADAFRUIT    
     const int HOLO_FRONT = 1;
@@ -311,9 +314,6 @@ Sabertooth *SyR=new Sabertooth(SYREN_ADDR, Serial2);
     Adafruit_PWMServoDriver domePWM = Adafruit_PWMServoDriver();
 #endif
 
-
-
-
 ///////Setup for USB and Bluetooth Devices////////////////////////////
 USB Usb;
 //USBHub Hub1(&Usb); // Some dongles have a hub inside
@@ -328,8 +328,8 @@ uint32_t lastLoopTime = 0;
 int badPS3Data = 0;
 
 #ifdef BLUETOOTH_SERIAL
-SPP SerialBT(&Btd,"Astromech:R2","1977"); // Create a BT Serial device(defaults: "Arduino" and the pin to "0000" if not set)
-boolean firstMessage = true;
+  SPP SerialBT(&Btd,"Astromech:R2","1977"); // Create a BT Serial device(defaults: "Arduino" and the pin to "0000" if not set)
+  boolean firstMessage = true;
 #endif
 String output = "";
 
@@ -359,8 +359,8 @@ unsigned long DriveMillis = 0;
 Servo UtilArmTopServo;  // create servo object to control a servo 
 Servo UtilArmBottomServo;  // create servo object to control a servo
 #if FOOT_CONTROLLER ==1
-Servo leftFootSignal;
-Servo rightFootSignal;
+  Servo leftFootSignal;
+  Servo rightFootSignal;
 #endif
 
 // =======================================================================================
@@ -411,6 +411,8 @@ void setup()
     #elif FOOT_CONTROLLER == 1
     leftFootSignal.attach(leftFootPin);
     rightFootSignal.attach(rightFootPin);
+    #elif FOOT_CONTROLLER == 3
+      //setup serial for Cytron
     #endif
     stopFeet();
 
@@ -447,13 +449,13 @@ void setup()
     closeUtilArm(UTIL_ARM_BOTTOM);
     
     //Setup for Coin Slot LEDs    
-    for(int i = 0; i<numberOfCoinSlotLEDs; i++)
-    {
-      pinMode(COIN_SLOT_LED_PINS[i],OUTPUT);
-      coinSlotLedState[i] = LOW;
-      digitalWrite(COIN_SLOT_LED_PINS[i], LOW); // all LEDs off
-      nextCoinSlotLedFlash[i] = millis() +random(100, 1000);
-    }     
+    // for(int i = 0; i<numberOfCoinSlotLEDs; i++)
+    // {
+    //   pinMode(COIN_SLOT_LED_PINS[i],OUTPUT);
+    //   coinSlotLedState[i] = LOW;
+    //   digitalWrite(COIN_SLOT_LED_PINS[i], LOW); // all LEDs off
+    //   nextCoinSlotLedFlash[i] = millis() +random(100, 1000);
+    // }
 }
 
 boolean readUSB()
@@ -465,7 +467,7 @@ boolean readUSB()
     if ( criticalFaultDetect() )
     {
       //We have a fault condition that we want to ensure that we do NOT process any controller data!!!
-      flushAndroidTerminal();
+      // flushAndroidTerminal();
       return false;
     }
 	//Fix backported from Shadow_MD to fix "Dome Twitch"
@@ -479,7 +481,7 @@ boolean readUSB()
 
 void loop()
 {
-    initAndroidTerminal();
+    // initAndroidTerminal();
     
     //Useful to enable with serial console when having controller issues.
     #ifdef TEST_CONROLLER
@@ -507,10 +509,9 @@ void loop()
     holoprojector();
     toggleSettings();
     soundControl();
-    flashCoinSlotLEDs();
-    flushAndroidTerminal();
+    // flashCoinSlotLEDs();
+    // flushAndroidTerminal();
 }
-
 
 void onInitPS3()
 {
@@ -586,43 +587,41 @@ void swapPS3NavControllers()
     PS3Nav2->attachOnInit(onInitPS3Nav2); 
 }
 
+// void initAndroidTerminal()
+// {
+//     #ifdef BLUETOOTH_SERIAL
+//     //Setup for Bluetooth Serial Monitoring
+//     if (SerialBT.connected)
+//     {
+//         if (firstMessage)
+//         {
+//             firstMessage = false;
+//             SerialBT.println(F("Hello from S.H.A.D.O.W.")); // Send welcome message
+//         }
+//         //TODO:  Process input from the SerialBT
+//         //if (SerialBT.available())
+//         //    Serial.write(SerialBT.read());
+//     }
+//     else
+//     {
+//         firstMessage = true;
+//     }
+//     #endif
+// }
 
-void initAndroidTerminal()
-{
-    #ifdef BLUETOOTH_SERIAL
-    //Setup for Bluetooth Serial Monitoring
-    if (SerialBT.connected)
-    {
-        if (firstMessage)
-        {
-            firstMessage = false;
-            SerialBT.println(F("Hello from S.H.A.D.O.W.")); // Send welcome message
-        }
-        //TODO:  Process input from the SerialBT
-        //if (SerialBT.available())
-        //    Serial.write(SerialBT.read());
-    }
-    else
-    {
-        firstMessage = true;
-    }
-    #endif
-}
-
-void flushAndroidTerminal()
-{
-    if (output != "")
-    {
-        if (Serial) Serial.println(output);
-        #ifdef BLUETOOTH_SERIAL
-        if (SerialBT.connected)
-            SerialBT.println(output);
-            SerialBT.send();
-        #endif
-        output = ""; // Reset output string
-    }
-}
-
+// void flushAndroidTerminal()
+// {
+//     if (output != "")
+//     {
+//         if (Serial) Serial.println(output);
+//         #ifdef BLUETOOTH_SERIAL
+//         if (SerialBT.connected)
+//             SerialBT.println(output);
+//             SerialBT.send();
+//         #endif
+//         output = ""; // Reset output string
+//     }
+// }
 
 void automateDome()
 {
@@ -723,6 +722,7 @@ void automateDome()
     }
 }
 
+
 // =======================================================================================
 // //////////////////////////Process PS3 Controller Fault Detection///////////////////////
 // =======================================================================================
@@ -816,8 +816,9 @@ boolean criticalFaultDetect()
     return false;
 }
 // =======================================================================================
-// //////////////////////////END of PS3 Controller Fault Detection///////////////////////
+// //////////////////////////END of PS3 Controller Fault Detection////////////////////////
 // =======================================================================================
+
 
 // =======================================================================================
 // //////////////////////////Process of PS3 Secondary Controller Fault Detection//////////
@@ -892,7 +893,6 @@ boolean criticalFaultDetectNav2()
       return true;
     }
   }
-  
   return false;
 }
 // =======================================================================================
@@ -901,9 +901,9 @@ boolean criticalFaultDetectNav2()
 
 
 // =======================================================================================
-// //////////////////////////Mixing Function for R/C Mode////////////////////////////////
+// //////////////////////////Mixing Function for R/C Mode/////////////////////////////////
 // =======================================================================================
-#if FOOT_CONTROLLER == 1
+// #if FOOT_CONTROLLER == 1
 int leftFoot,rightFoot; //will hold foot speed values (-100 to 100)
 void mixBHD(byte stickX, byte stickY, byte maxDriveSpeed){  
     // This is BigHappyDude's mixing function, for differential (tank) style drive using two motor controllers.
@@ -913,8 +913,8 @@ void mixBHD(byte stickX, byte stickY, byte maxDriveSpeed){
     // 180,000 = left foot full forward, right foot full reverse (spin droid clockwise)
     // 000,180 = left foot full reverse, right foot full forward (spin droid counter-clockwise)
     // 090,090 = no movement
-    // for simplicity, we think of this diamond matrix as a range from -100 to +100 , then map the final values to servo range (0-180) at the end 
-    //  Ramping and Speed mode applied on the droid.  
+    // for simplicity, we think of this diamond matrix as a range from -100 to +100 , then map the final values to servo range (0-180) 
+    // at the end Ramping and Speed mode applied on the droid.  
     if(((stickX <= 113) || (stickX >= 141)) || ((stickY <= 113) || (stickY >= 141))){  //  if movement outside deadzone
       //  Map to easy grid -100 to 100 in both axis, including deadzones.
       int YDist = 0;  // set to 0 as a default value if no if used.
@@ -930,16 +930,17 @@ void mixBHD(byte stickX, byte stickY, byte maxDriveSpeed){
        XDist = (map(stickX, 141, 255, 1, 100));   //  Map the right direction stick value to Turn speed
       }
 
+      
       /* Debugging by KnightShade 
       //Driving is TOO sensitive.   Need to dial down the turning to a different scale factor.
-      This code will map teh linear values to a flatter value range.
+      This code will map the linear values to a flatter value range.
 
       //The larger SteeringFactor is the less senstitive steering is...  
       //Smaller values give more accuracy in making fine steering corrections
         XDist*sqrt(XDist+SteeringFactor)
-      */
+      
       //Convert from Linear to a scaled/exponential Steering system
-      int SteeringFactor = 100; //TODO - move a constant at top of script
+      // int SteeringFactor = 100; //TODO - move a constant at top of script
       int TempScaledXDist =  (int) (abs(XDist)*sqrt(abs(XDist)+SteeringFactor));
       int MaxScale = (100*sqrt(100+SteeringFactor));
       XDist = (map(stickX, 0, MaxScale, 1, 100));       //  Map the left direction stick value to Turn speed
@@ -950,6 +951,7 @@ void mixBHD(byte stickX, byte stickY, byte maxDriveSpeed){
         XDist = (map(TempScaledXDist, 0, MaxScale, 1, 100));   //  Map the right direction stick value to Turn speed
       }
       //END Convert from Linear to a scaled/exponential Steering system
+      */
       
       //  Constrain to Diamond values.  using 2 line equations and find the intersect, boiled down to the minimum
       //  This was the inspiration; https://github.com/declanshanaghy/JabberBot/raw/master/Docs/Using%20Diamond%20Coordinates%20to%20Power%20a%20Differential%20Drive.pdf 
@@ -1005,28 +1007,31 @@ void mixBHD(byte stickX, byte stickY, byte maxDriveSpeed){
       int maxServoForward = map(maxDriveSpeed, 0, 127, 90, 180); //drivespeed was defined as 0 to 127 for Sabertooth serial, now we want something in an upper servo range (90 to 180)
       int maxServoReverse = map(maxDriveSpeed, 0, 127, 90, 0); //drivespeed was defined as 0 to 127 for Sabertooth serial, now we want something in an upper servo range (90 to 0)
       #if leftDirection == 0
-      leftFoot=map(LeftSpeed, -100, 100, maxServoForward, maxServoReverse);
+        leftFoot=map(LeftSpeed, -100, 100, maxServoForward, maxServoReverse);
       #else
-      leftFoot=map(LeftSpeed, -100, 100, maxServoReverse, maxServoForward);
+        leftFoot=map(LeftSpeed, -100, 100, maxServoReverse, maxServoForward);
       #endif
       #if rightDirection == 0
-      rightFoot=map(RightSpeed, -100, 100, maxServoForward, maxServoReverse);
+        rightFoot=map(RightSpeed, -100, 100, maxServoForward, maxServoReverse);
       #else
-      rightFoot=map(RightSpeed, -100, 100, maxServoReverse, maxServoForward);
+        rightFoot=map(RightSpeed, -100, 100, maxServoReverse, maxServoForward);
       #endif
       /*  END Knightshade Debug */
     } else {
       leftFoot=90;
       rightFoot=90;
-    }      
+    }     
 }
-#endif                                     
+// #endif                                     
 
 // =======================================================================================
-// ////////////////////////END:  Mixing Function for R/C Mode/////////////////////////////
+// //////////////////////////END:  Mixing Function for R/C Mode///////////////////////////
 // =======================================================================================
 
 
+// =======================================================================================
+// //////////////////////////Drive Functions//////////////////////////////////////////////
+// =======================================================================================
 // quick function to stop the feet depending on which drive system we're using...
 void stopFeet() {
   #if FOOT_CONTROLLER == 0
@@ -1034,9 +1039,11 @@ void stopFeet() {
   #elif FOOT_CONTROLLER == 1
   leftFootSignal.write(90);
   rightFootSignal.write(90);
+  #elif FOOT_CONTROLLER == 3
+  FootMotorLeft.setSpeed(0);
+  FootMotorRight.setSpeed(0);
   #endif
 }
-
 
 boolean ps3FootMotorDrive(PS3BT* myPS3 = PS3Nav)
 {
@@ -1044,11 +1051,9 @@ boolean ps3FootMotorDrive(PS3BT* myPS3 = PS3Nav)
   int stickSpeed = 0;
   int turnnum = 0;
 
-  if (isPS3NavigatonInitialized)
-  {
+  if (isPS3NavigatonInitialized) {
       // Additional fault control.  Do NOT send additional commands to Sabertooth if no controllers have initialized.
-      if (!isStickEnabled)
-      {
+      if (!isStickEnabled) {
             #ifdef SHADOW_VERBOSE
               if ( abs(myPS3->getAnalogHat(LeftHatY)-128) > joystickFootDeadZoneRange)
               {
@@ -1057,114 +1062,131 @@ boolean ps3FootMotorDrive(PS3BT* myPS3 = PS3Nav)
             #endif
           stopFeet();
           isFootMotorStopped = true;
-      } else if (!myPS3->PS3NavigationConnected)
-      {
+      } else if (!myPS3->PS3NavigationConnected) {
           stopFeet();
           isFootMotorStopped = true;
-      } else if ( myPS3->getButtonPress(L1) )
-      {
+      } else if ( myPS3->getButtonPress(L1) ) {
           //TODO:  Does this need to change this when we support dual controller, or covered by improved isStickEnabled
           stopFeet();
           isFootMotorStopped = true;
-      } else
-      {
+      } else {
           //make those feet move!!!///////////////////////////////////////////////////
           int joystickPosition = myPS3->getAnalogHat(LeftHatY);
           isFootMotorStopped = false;
           #if FOOT_CONTROLLER == 0
-          if (myPS3->getButtonPress(L2))
-          {
-            int throttle = 0;
-            if (joystickPosition < 127)
-            {
-                throttle = joystickPosition - myPS3->getAnalogButton(L2);
-            } else
-            {
-                throttle = joystickPosition + myPS3->getAnalogButton(L2);
+            if (myPS3->getButtonPress(L2)) {
+              int throttle = 0;
+              if (joystickPosition < 127) {
+                  throttle = joystickPosition - myPS3->getAnalogButton(L2);
+              } else {
+                  throttle = joystickPosition + myPS3->getAnalogButton(L2);
+              }
+              stickSpeed = (map(throttle, -255, 510, -drivespeed2, drivespeed2));                
+            } else {
+              stickSpeed = (map(joystickPosition, 0, 255, -drivespeed1, drivespeed1));
+            }          
+
+            if ( abs(joystickPosition-128) < joystickFootDeadZoneRange) {
+                footDriveSpeed = 0;
+            } else if (footDriveSpeed < stickSpeed) {
+                if (stickSpeed-footDriveSpeed<(ramping+1))
+                    footDriveSpeed+=ramping;
+                else
+                    footDriveSpeed = stickSpeed;
+            } else if (footDriveSpeed > stickSpeed) {
+                if (footDriveSpeed-stickSpeed<(ramping+1))
+                    footDriveSpeed-=ramping;
+                else
+                    footDriveSpeed = stickSpeed;  
             }
-            stickSpeed = (map(throttle, -255, 510, -drivespeed2, drivespeed2));                
-          } else 
-          {
-            stickSpeed = (map(joystickPosition, 0, 255, -drivespeed1, drivespeed1));
-          }          
+            
+            turnnum = (myPS3->getAnalogHat(LeftHatX));
 
-          if ( abs(joystickPosition-128) < joystickFootDeadZoneRange)
-          {
-              footDriveSpeed = 0;
-          } else if (footDriveSpeed < stickSpeed)
-          {
-              if (stickSpeed-footDriveSpeed<(ramping+1))
-                  footDriveSpeed+=ramping;
-              else
-                  footDriveSpeed = stickSpeed;
-          }
-          else if (footDriveSpeed > stickSpeed)
-          {
-              if (footDriveSpeed-stickSpeed<(ramping+1))
-                  footDriveSpeed-=ramping;
-              else
-                  footDriveSpeed = stickSpeed;  
-          }
-          
-          turnnum = (myPS3->getAnalogHat(LeftHatX));
-
-          //TODO:  Is there a better algorithm here?  
-          if ( abs(footDriveSpeed) > 50)
-              turnnum = (map(myPS3->getAnalogHat(LeftHatX), 54, 200, -(turnspeed/4), (turnspeed/4)));
-          else if (turnnum <= 200 && turnnum >= 54)
-              turnnum = (map(myPS3->getAnalogHat(LeftHatX), 54, 200, -(turnspeed/3), (turnspeed/3)));
-          else if (turnnum > 200)
-              turnnum = (map(myPS3->getAnalogHat(LeftHatX), 201, 255, turnspeed/3, turnspeed));
-          else if (turnnum < 54)
-              turnnum = (map(myPS3->getAnalogHat(LeftHatX), 0, 53, -turnspeed, -(turnspeed/3)));
+            //TODO:  Is there a better algorithm here?  
+            if ( abs(footDriveSpeed) > 50)
+                turnnum = (map(myPS3->getAnalogHat(LeftHatX), 54, 200, -(turnspeed/4), (turnspeed/4)));
+            else if (turnnum <= 200 && turnnum >= 54)
+                turnnum = (map(myPS3->getAnalogHat(LeftHatX), 54, 200, -(turnspeed/3), (turnspeed/3)));
+            else if (turnnum > 200)
+                turnnum = (map(myPS3->getAnalogHat(LeftHatX), 201, 255, turnspeed/3, turnspeed));
+            else if (turnnum < 54)
+                turnnum = (map(myPS3->getAnalogHat(LeftHatX), 0, 53, -turnspeed, -(turnspeed/3)));
           #endif
 
           currentMillis = millis();
-          if ( (currentMillis - previousFootMillis) > serialLatency  )
-          {
+          if ( (currentMillis - previousFootMillis) > serialLatency  ) {
 
-          #ifdef SHADOW_VERBOSE      
-          if ( footDriveSpeed < -driveDeadBandRange || footDriveSpeed > driveDeadBandRange)
-          {
-            output += "Driving Droid at footSpeed: ";
-            output += footDriveSpeed;
-            output += "!  DriveStick is Enabled\r\n";
-            output += "Joystick: ";              
-            output += myPS3->getAnalogHat(LeftHatX);
-            output += "/";              
-            output += myPS3->getAnalogHat(LeftHatY);
-            output += " turnnum: ";              
-            output += turnnum;
-            output += "/";              
-            output += footDriveSpeed;
-            output += " Time of command: ";              
-            output += millis();
-          }
-          #endif
+            #ifdef SHADOW_VERBOSE      
+            if ( footDriveSpeed < -driveDeadBandRange || footDriveSpeed > driveDeadBandRange)
+            {
+              output += "Driving Droid at footSpeed: ";
+              output += footDriveSpeed;
+              output += "!  DriveStick is Enabled\r\n";
+              output += "Joystick: ";              
+              output += myPS3->getAnalogHat(LeftHatX);
+              output += "/";              
+              output += myPS3->getAnalogHat(LeftHatY);
+              output += " turnnum: ";              
+              output += turnnum;
+              output += "/";              
+              output += footDriveSpeed;
+              output += " Time of command: ";              
+              output += millis();
+            }
+            #endif
 
-          #if FOOT_CONTROLLER == 0
-          ST->turn(turnnum * invertTurnDirection);
-          ST->drive(footDriveSpeed);
-          // The Sabertooth won't act on mixed mode packet serial commands until
-          // it has received power levels for BOTH throttle and turning, since it
-          // mixes the two together to get diff-drive power levels for both motors.
-          #elif FOOT_CONTROLLER == 1
-            //Experimental Q85. Untested Madness!!! Use at your own risk and expect your droid to run away in flames.
-            //use BigHappyDude's mixing algorythm to get values for each foot...
-            if (myPS3->getButtonPress(L2)) mixBHD(myPS3->getAnalogHat(LeftHatX),myPS3->getAnalogHat(LeftHatY),drivespeed2);
-            else mixBHD(myPS3->getAnalogHat(LeftHatX),myPS3->getAnalogHat(LeftHatY),drivespeed1);
-            //now we've got values for leftFoot and rightFoot, output those somehow...
-            leftFootSignal.write(leftFoot);
-            rightFootSignal.write(rightFoot);
-          #endif
-           previousFootMillis = currentMillis;
-          return true; //we sent a foot command   
+            #if FOOT_CONTROLLER == 0
+              ST->turn(turnnum * invertTurnDirection);
+              ST->drive(footDriveSpeed);
+              // The Sabertooth won't act on mixed mode packet serial commands until
+              // it has received power levels for BOTH throttle and turning, since it
+              // mixes the two together to get diff-drive power levels for both motors.
+            #elif FOOT_CONTROLLER == 1
+              //Experimental Q85. Untested Madness!!! Use at your own risk and expect your droid to run away in flames.
+              //use BigHappyDude's mixing algorythm to get values for each foot...
+              if (myPS3->getButtonPress(L2))
+                mixBHD(myPS3->getAnalogHat(LeftHatX), myPS3->getAnalogHat(LeftHatY), drivespeed2);
+              else
+                mixBHD(myPS3->getAnalogHat(LeftHatX), myPS3->getAnalogHat(LeftHatY), drivespeed1);
+              //now we've got values for leftFoot and rightFoot, output those somehow...
+              leftFootSignal.write(leftFoot);
+              rightFootSignal.write(rightFoot);
+            #elif FOOT_CONTROLLER == 3
+              //TODO: implement movement for Cytron
+              if (myPS3->getButtonPress(L2))
+                mixBHD(myPS3->getAnalogHat(LeftHatX), myPS3->getAnalogHat(LeftHatY), drivespeed2);
+              else
+                mixBHD(myPS3->getAnalogHat(LeftHatX), myPS3->getAnalogHat(LeftHatY), drivespeed1);
+              //now we've got values for leftFoot and rightFoot, output those somehow...
+              //MIGHT NEED TO MAP FROM -100 > 100 to 0 > 255
+              FootMotorLeft.setSpeed(leftFoot);
+              FootMotorRight.setSpeed(rightFoot);
+            #endif
+            previousFootMillis = currentMillis;
+            return true; //we sent a foot command   
           }
       }
   }
   return false;
 }
 
+void footMotorDrive()
+{
+  //Flood control prevention
+  if ((millis() - previousFootMillis) < serialLatency) return;  
+  if (PS3Nav->PS3NavigationConnected) ps3FootMotorDrive(PS3Nav);
+  //TODO:  Drive control must be mutually exclusive - for safety
+  //Future: I'm not ready to test that before FanExpo
+  //if (PS3Nav2->PS3NavigationConnected) ps3FootMotorDrive(PS3Nav2);
+}  
+// =======================================================================================
+// //////////////////////////END: Drive Functions/////////////////////////////////////////
+// =======================================================================================
+
+
+// =======================================================================================
+// //////////////////////////Dome Functions///////////////////////////////////////////////
+// =======================================================================================
 int ps3DomeDrive(PS3BT* myPS3 = PS3Nav, int controllerNumber = 1)
 {
     int domeRotationSpeed = 0;
@@ -1197,6 +1219,32 @@ int ps3DomeDrive(PS3BT* myPS3 = PS3Nav, int controllerNumber = 1)
     }
     return domeRotationSpeed;
 }
+
+void domeDrive()
+{
+  //Flood control prevention
+  //This is intentionally set to double the rate of the Foot Motor Latency
+  if ((millis() - previousDomeMillis) < (2*serialLatency) ) return;  
+  
+
+  int domeRotationSpeed = 0;
+  int ps3NavControlSpeed = 0;
+  int ps3Nav2ControlSpeed = 0;
+  if (PS3Nav->PS3NavigationConnected) ps3NavControlSpeed = ps3DomeDrive(PS3Nav,1);
+  if (PS3Nav2->PS3NavigationConnected) ps3Nav2ControlSpeed = ps3DomeDrive(PS3Nav2,2);
+
+  //In a two controller system, give dome priority to the secondary controller.
+  //Only allow the "Primary" controller dome control if the Secondary is NOT spinnning it
+  
+  if ( abs(ps3Nav2ControlSpeed) > 0 )
+  {
+    domeRotationSpeed = ps3Nav2ControlSpeed;
+  } else
+  {
+    domeRotationSpeed = ps3NavControlSpeed; 
+  }
+  rotateDome(domeRotationSpeed,"Controller Move");
+}  
 
 void rotateDome(int domeRotationSpeed, String mesg)
 {
@@ -1237,8 +1285,244 @@ void rotateDome(int domeRotationSpeed, String mesg)
       SyR->motor(domeRotationSpeed);
     }
 }
+// =======================================================================================
+// //////////////////////////END: Dome Functions//////////////////////////////////////////
+// =======================================================================================
 
 
+// =======================================================================================
+// //////////////////////////Settings Functions///////////////////////////////////////////
+// =======================================================================================
+void ps3ToggleSettings(PS3BT* myPS3 = PS3Nav)
+{
+    if(myPS3->getButtonPress(PS)&&myPS3->getButtonClick(L3))
+    {
+      //Quick Shutdown of PS3 Controller
+      output += "\r\nDisconnecting the controller.\r\n";
+      myPS3->disconnect();
+    }
+
+  
+    // enable / disable Drive stick & play sound
+    if(myPS3->getButtonPress(PS)&&myPS3->getButtonClick(CROSS))
+    {
+        #ifdef SHADOW_DEBUG
+          output += "Disabling the DriveStick\r\n";
+        #endif
+        isStickEnabled = false;
+//        trigger.play(52);
+    }
+    if(myPS3->getButtonPress(PS)&&myPS3->getButtonClick(CIRCLE))
+    {
+        #ifdef SHADOW_DEBUG
+          output += "Enabling the DriveStick\r\n";
+        #endif
+        isStickEnabled = true;
+//        trigger.play(53);
+    }
+
+
+////turn hp automation or automate on & off
+//    if(myPS3->getButtonPress(L1)&&myPS3->getButtonClick(CIRCLE))
+//    {
+//        #ifdef SHADOW_DEBUG
+//          output += "Enabling the Holo Automation\r\n";
+//        #endif
+//        //Turn On HP Automation
+//        domeData.hpa = 1;
+//        domeData.dsp = 100;
+//        ET.sendData();
+//    }
+//    if(myPS3->getButtonPress(L1)&&myPS3->getButtonClick(CROSS))
+//    {
+//        #ifdef SHADOW_DEBUG
+//          output += "Disabling the Holo Automation\r\n";
+//        #endif
+//        //Turn Off HP Automation
+//        domeData.hpa = 0;
+//        domeData.dsp = 100;
+//        ET.sendData();
+//    }
+
+    if(myPS3->getButtonPress(L2)&&myPS3->getButtonClick(CROSS))
+    {
+	  if(isAutomateDomeOn)
+      {
+        #ifdef SHADOW_DEBUG
+          output += "Disabling the Dome Automation\r\n";        
+        #endif
+        isAutomateDomeOn = false;
+        domeStatus = 0;
+        domeTargetPosition = 0;
+        SyR->stop();
+        action = 0;
+//        trigger.play(66);
+	  }
+    }
+    if(myPS3->getButtonPress(L2)&&myPS3->getButtonClick(CIRCLE))
+    {
+        #ifdef SHADOW_DEBUG
+          output += "Enabling the Dome Automation\r\n";
+        #endif
+        isAutomateDomeOn = true;
+//        trigger.play(65);
+    }
+
+
+    /*
+    ////Logic display brightness
+        if(ps2x.ButtonPressed(PSB_PAD_UP))
+        {
+            if(ps2x.Button(PSB_L1))
+            {
+                domeData.dsp = 24;
+                ET.sendData();
+            }
+        }
+        if(ps2x.ButtonPressed(PSB_PAD_DOWN))
+        {
+            if(ps2x.Button(PSB_L1))
+            {
+                domeData.dsp = 25;
+                ET.sendData();
+            }
+        }
+    */
+
+}
+
+void toggleSettings()
+{
+   if (PS3Nav->PS3NavigationConnected) ps3ToggleSettings(PS3Nav);
+   if (PS3Nav2->PS3NavigationConnected) ps3ToggleSettings(PS3Nav2);
+}  
+// =======================================================================================
+// //////////////////////////END: Settings Functions//////////////////////////////////////
+// =======================================================================================
+
+
+// =======================================================================================
+// //////////////////////////Utility Arm Functions////////////////////////////////////////
+// =======================================================================================
+void ps3utilityArms(PS3BT* myPS3 = PS3Nav, int controllerNumber = 1)
+{
+  switch (controllerNumber)
+    {
+      case 1:
+        if(myPS3->getButtonPress(L1)&&myPS3->getButtonClick(CROSS))
+          {
+              #ifdef SHADOW_DEBUG
+                output += "Opening/Closing top utility arm\r\n";
+              #endif
+              
+                waveUtilArm(UTIL_ARM_TOP);
+          }
+          if(myPS3->getButtonPress(L1)&&myPS3->getButtonClick(CIRCLE))
+          {
+              #ifdef SHADOW_DEBUG
+                output += "Opening/Closing bottom utility arm\r\n";
+              #endif
+              
+                waveUtilArm(UTIL_ARM_BOTTOM);
+          }
+        break;
+      case 2:
+        if (!(myPS3->getButtonPress(L1)||myPS3->getButtonPress(L2)||myPS3->getButtonPress(PS)))
+        {
+          if(myPS3->getButtonClick(CROSS))
+          {
+              #ifdef SHADOW_DEBUG
+                output += "Opening/Closing top utility arm\r\n";
+              #endif
+              
+                waveUtilArm(UTIL_ARM_TOP);
+          }
+          if(myPS3->getButtonClick(CIRCLE))
+          {
+              #ifdef SHADOW_DEBUG
+                output += "Opening/Closing bottom utility arm\r\n";
+              #endif
+              
+                waveUtilArm(UTIL_ARM_BOTTOM);
+          }
+        }
+        break;
+    }
+}
+
+void utilityArms()
+{
+  if (PS3Nav->PS3NavigationConnected) ps3utilityArms(PS3Nav,1);
+  if (PS3Nav2->PS3NavigationConnected) ps3utilityArms(PS3Nav2,2);
+}
+
+void openUtilArm(int arm, int position = utilArmOpenPos)
+{
+    //When passed a position - this can "partially" open the arms.
+    //Great for more interaction
+    moveUtilArm(arm, utilArmOpenPos);
+}
+
+void closeUtilArm(int arm)
+{
+    moveUtilArm(arm, utilArmClosedPos);
+}
+
+void waveUtilArm(int arm)
+{
+    switch (arm)
+    {
+      case UTIL_ARM_TOP:
+        if(isUtilArmTopOpen == false){
+          openUtilArm(UTIL_ARM_TOP);
+        } else {
+          closeUtilArm(UTIL_ARM_TOP);
+        }
+        break;
+      case UTIL_ARM_BOTTOM:  
+        if(isUtilArmBottomOpen == false){
+          openUtilArm(UTIL_ARM_BOTTOM);
+        } else {
+          closeUtilArm(UTIL_ARM_BOTTOM);
+        }
+        break;
+    }
+}
+
+void moveUtilArm(int arm, int position)
+{
+    switch (arm)
+    {
+      case UTIL_ARM_TOP:
+        UtilArmTopServo.write(position);
+        if ( position == utilArmClosedPos)
+        {
+          isUtilArmTopOpen = false;
+        } else
+        {
+          isUtilArmTopOpen = true;
+        }
+        break;
+      case UTIL_ARM_BOTTOM:  
+        UtilArmBottomServo.write(position);
+        if ( position == utilArmClosedPos)
+        {
+          isUtilArmBottomOpen = false;
+        } else
+        {
+          isUtilArmBottomOpen = true;
+        }
+        break;
+    }
+}
+// =======================================================================================
+// //////////////////////////END: Utility Arm Functions///////////////////////////////////
+// =======================================================================================
+
+
+// =======================================================================================
+// //////////////////////////Holo Functions///////////////////////////////////////////////
+// =======================================================================================
 #ifdef DOME_I2C_ADAFRUIT           
 boolean adafruitPs3Holoprojector(PS3BT* myPS3 = PS3Nav, int controllerNumber = 1)
 {
@@ -1343,7 +1627,6 @@ boolean adafruitPs3Holoprojector(PS3BT* myPS3 = PS3Nav, int controllerNumber = 1
 }
 #endif
   
-    
 #if defined(DOME_SERIAL_TEECES) || defined(DOME_I2C_TEECES)
 boolean teecesPs3Holoprojector(PS3BT* myPS3 = PS3Nav, int controllerNumber = 1)
 {
@@ -1486,162 +1769,186 @@ boolean ps3Holoprojector(PS3BT* myPS3 = PS3Nav, int controllerNumber = 1)
       return false;
 }
 
-
-void ps3utilityArms(PS3BT* myPS3 = PS3Nav, int controllerNumber = 1)
+void moveHoloServo(int pwmPIN, int pulse)
 {
-  switch (controllerNumber)
-    {
-      case 1:
-        if(myPS3->getButtonPress(L1)&&myPS3->getButtonClick(CROSS))
-          {
-              #ifdef SHADOW_DEBUG
-                output += "Opening/Closing top utility arm\r\n";
-              #endif
-              
-                waveUtilArm(UTIL_ARM_TOP);
-          }
-          if(myPS3->getButtonPress(L1)&&myPS3->getButtonClick(CIRCLE))
-          {
-              #ifdef SHADOW_DEBUG
-                output += "Opening/Closing bottom utility arm\r\n";
-              #endif
-              
-                waveUtilArm(UTIL_ARM_BOTTOM);
-          }
-        break;
-      case 2:
-        if (!(myPS3->getButtonPress(L1)||myPS3->getButtonPress(L2)||myPS3->getButtonPress(PS)))
-        {
-          if(myPS3->getButtonClick(CROSS))
-          {
-              #ifdef SHADOW_DEBUG
-                output += "Opening/Closing top utility arm\r\n";
-              #endif
-              
-                waveUtilArm(UTIL_ARM_TOP);
-          }
-          if(myPS3->getButtonClick(CIRCLE))
-          {
-              #ifdef SHADOW_DEBUG
-                output += "Opening/Closing bottom utility arm\r\n";
-              #endif
-              
-                waveUtilArm(UTIL_ARM_BOTTOM);
-          }
-        }
-        break;
-    }
+    domePWM.setPWM(pwmPIN, 0, pulse);
 }
 
-void utilityArms()
+void holoLightFlicker(int pwmPINred, int pwmPINgreen, int pwmPINblue)
 {
-  if (PS3Nav->PS3NavigationConnected) ps3utilityArms(PS3Nav,1);
-  if (PS3Nav2->PS3NavigationConnected) ps3utilityArms(PS3Nav2,2);
+    int flicker = random(4096);
+    domePWM.setPWM(pwmPINred, 0, flicker*0.75);
+    domePWM.setPWM(pwmPINgreen, 0, flicker*0.75);
+    domePWM.setPWM(pwmPINblue, 0, random(4096));
 }
 
-void ps3ToggleSettings(PS3BT* myPS3 = PS3Nav)
+void holoLightOff(int pwmPINred, int pwmPINgreen, int pwmPINblue)
 {
-    if(myPS3->getButtonPress(PS)&&myPS3->getButtonClick(L3))
-    {
-      //Quick Shutdown of PS3 Controller
-      output += "\r\nDisconnecting the controller.\r\n";
-      myPS3->disconnect();
-    }
+    domePWM.setPWM(pwmPINred, 0, PWM_OFF);
+    domePWM.setPWM(pwmPINgreen, 0, PWM_OFF);
+    domePWM.setPWM(pwmPINblue, 0, PWM_OFF);
+}
 
-  
-    // enable / disable Drive stick & play sound
-    if(myPS3->getButtonPress(PS)&&myPS3->getButtonClick(CROSS))
-    {
-        #ifdef SHADOW_DEBUG
-          output += "Disabling the DriveStick\r\n";
-        #endif
-        isStickEnabled = false;
-//        trigger.play(52);
-    }
-    if(myPS3->getButtonPress(PS)&&myPS3->getButtonClick(CIRCLE))
-    {
-        #ifdef SHADOW_DEBUG
-          output += "Enabling the DriveStick\r\n";
-        #endif
-        isStickEnabled = true;
-//        trigger.play(53);
-    }
+void holoLightOn(int pwmPINred, int pwmPINgreen, int pwmPINblue)
+{
+    domePWM.setPWM(pwmPINred, 0, 4094);
+    domePWM.setPWM(pwmPINgreen, 0, 4094);
+    domePWM.setPWM(pwmPINblue, 0, 4094);
+}
 
+void randomHoloMovement(int holoprojector)
+{
+    currentMillis = millis();
 
-////turn hp automation or automate on & off
-//    if(myPS3->getButtonPress(L1)&&myPS3->getButtonClick(CIRCLE))
-//    {
-//        #ifdef SHADOW_DEBUG
-//          output += "Enabling the Holo Automation\r\n";
-//        #endif
-//        //Turn On HP Automation
-//        domeData.hpa = 1;
-//        domeData.dsp = 100;
-//        ET.sendData();
-//    }
-//    if(myPS3->getButtonPress(L1)&&myPS3->getButtonClick(CROSS))
-//    {
-//        #ifdef SHADOW_DEBUG
-//          output += "Disabling the Holo Automation\r\n";
-//        #endif
-//        //Turn Off HP Automation
-//        domeData.hpa = 0;
-//        domeData.dsp = 100;
-//        ET.sendData();
-//    }
-
-    if(myPS3->getButtonPress(L2)&&myPS3->getButtonClick(CROSS))
+    switch (holoprojector)
     {
-	  if(isAutomateDomeOn)
+      case HOLO_FRONT:   
+          if (currentMillis > holoFrontRandomTime)
+          {  
+              holoFrontRandomTime = currentMillis + random(HOLO_DELAY);
+              //TODO:  Determine range of Holoprojector X/Y better
+                  //hpY=random(80,120);
+                  //hpX=random(80,120); 
+              moveHoloServo(HOLO_FRONT_X_PWM_PIN, random(HOLO_FRONT_X_SERVO_MIN,HOLO_FRONT_X_SERVO_MAX));
+              moveHoloServo(HOLO_FRONT_Y_PWM_PIN, random(HOLO_FRONT_Y_SERVO_MIN,HOLO_FRONT_Y_SERVO_MAX));
+              int ledState = random(1,10);
+              switch( ledState )
+              {
+                  case 0:
+                  case 1:
+                  case 2:
+                  case 3:
+                      holoLightFrontStatus = HOLO_LED_OFF;
+                      holoLightOff(HOLO_FRONT_RED_PWM_PIN, HOLO_FRONT_GREEN_PWM_PIN, HOLO_FRONT_BLUE_PWM_PIN);
+                      break;
+                  case 4:
+                  case 5:
+                  case 6:
+                  case 7:
+                      holoLightFrontStatus = HOLO_LED_ON;
+                      holoLightOn(HOLO_FRONT_RED_PWM_PIN, HOLO_FRONT_GREEN_PWM_PIN, HOLO_FRONT_BLUE_PWM_PIN);
+                      break;
+                  default:
+                      holoLightFrontStatus = HOLO_LED_FLICKER;
+                      break;
+              }
+          }
+          if (holoLightFrontStatus == HOLO_LED_FLICKER)
+          {
+              holoLightFlicker(HOLO_FRONT_RED_PWM_PIN, HOLO_FRONT_GREEN_PWM_PIN, HOLO_FRONT_BLUE_PWM_PIN);
+          }        
+          break;
+      case HOLO_BACK:
+            if (currentMillis > holoBackRandomTime)
+            {  
+                holoBackRandomTime = currentMillis + random(HOLO_DELAY*1.5);
+                //TODO:  Determine range of Holoprojector X/Y better
+                    //hpY=random(80,120);
+                    //hpX=random(80,120); 
+                moveHoloServo(HOLO_BACK_X_PWM_PIN, random(HOLO_BACK_X_SERVO_MIN,HOLO_BACK_X_SERVO_MAX));
+                moveHoloServo(HOLO_BACK_Y_PWM_PIN, random(HOLO_BACK_Y_SERVO_MIN,HOLO_BACK_Y_SERVO_MAX));
+                int ledState = random(1,10);
+                switch( ledState )
+                {
+                    case 0:
+                    case 1:
+                    case 2:
+                    case 3:
+                    case 4:
+                        holoLightBackStatus = HOLO_LED_OFF;
+                        holoLightOff(HOLO_BACK_RED_PWM_PIN, HOLO_BACK_GREEN_PWM_PIN, HOLO_BACK_BLUE_PWM_PIN);
+                        break;
+                    case 5:
+                    case 6:
+                    case 7:
+                    case 8:
+                        holoLightBackStatus = HOLO_LED_ON;
+                        holoLightOn(HOLO_BACK_RED_PWM_PIN, HOLO_BACK_GREEN_PWM_PIN, HOLO_BACK_BLUE_PWM_PIN);
+                        break;
+                    default:
+                        holoLightBackStatus = HOLO_LED_FLICKER;
+                        break;
+                }
+            }
+            if (holoLightBackStatus == HOLO_LED_FLICKER)
+            {
+                holoLightFlicker(HOLO_BACK_RED_PWM_PIN, HOLO_BACK_GREEN_PWM_PIN, HOLO_BACK_BLUE_PWM_PIN);
+            }        
+            break;
+        case HOLO_TOP:  
+            if (currentMillis > holoTopRandomTime)
+            {  
+                holoTopRandomTime = currentMillis + random(HOLO_DELAY*1.5);
+                //TODO:  Determine range of Holoprojector X/Y better
+                    //hpY=random(80,120);
+                    //hpX=random(80,120); 
+                moveHoloServo(HOLO_TOP_X_PWM_PIN, random(HOLO_TOP_X_SERVO_MIN,HOLO_TOP_X_SERVO_MAX));
+                moveHoloServo(HOLO_TOP_Y_PWM_PIN, random(HOLO_TOP_Y_SERVO_MIN,HOLO_TOP_Y_SERVO_MAX));
+                int ledState = random(1,10);
+                switch( ledState )
+                {
+                    case 0:
+                    case 1:
+                    case 2:
+                    case 3:
+                    case 4:
+                    case 5:
+                        holoLightTopStatus = HOLO_LED_OFF;
+                        holoLightOff(HOLO_TOP_RED_PWM_PIN, HOLO_TOP_GREEN_PWM_PIN, HOLO_TOP_BLUE_PWM_PIN);
+                        break;
+                    case 6:
+                    case 7:
+                    case 8:
+                        holoLightTopStatus = HOLO_LED_ON;
+                        holoLightOn(HOLO_TOP_RED_PWM_PIN, HOLO_TOP_GREEN_PWM_PIN, HOLO_TOP_BLUE_PWM_PIN);
+                        break;
+                    default:
+                        holoLightTopStatus = HOLO_LED_FLICKER;
+                        break;
+                }
+            }
+            if (holoLightTopStatus == HOLO_LED_FLICKER)
+            {
+                holoLightFlicker(HOLO_TOP_RED_PWM_PIN, HOLO_TOP_GREEN_PWM_PIN, HOLO_TOP_BLUE_PWM_PIN);
+            }        
+            break;
+      }  
+}
+
+void holoprojector()
+{
+   boolean isFrontHoloActivelyControlled = false;
+   if (PS3Nav->PS3NavigationConnected) 
+   {
+     if ( ps3Holoprojector(PS3Nav,1) )
+     {
+       isFrontHoloActivelyControlled = true;
+     }
+   }
+   if (PS3Nav2->PS3NavigationConnected) 
       {
-        #ifdef SHADOW_DEBUG
-          output += "Disabling the Dome Automation\r\n";        
-        #endif
-        isAutomateDomeOn = false;
-        domeStatus = 0;
-        domeTargetPosition = 0;
-        SyR->stop();
-        action = 0;
-//        trigger.play(66);
-	  }
-    }
-    if(myPS3->getButtonPress(L2)&&myPS3->getButtonClick(CIRCLE))
-    {
-        #ifdef SHADOW_DEBUG
-          output += "Enabling the Dome Automation\r\n";
-        #endif
-        isAutomateDomeOn = true;
-//        trigger.play(65);
-    }
+     if ( ps3Holoprojector(PS3Nav2,2) )
+     {
+       isFrontHoloActivelyControlled = true;
+     }
+   }
+  if (!isFrontHoloActivelyControlled) randomHoloMovement(HOLO_FRONT);
+  randomHoloMovement(HOLO_BACK);
+  randomHoloMovement(HOLO_TOP);
+}  
+// =======================================================================================
+// //////////////////////////END: Holo Functions//////////////////////////////////////////
+// =======================================================================================
 
 
-    /*
-    ////Logic display brightness
-        if(ps2x.ButtonPressed(PSB_PAD_UP))
-        {
-            if(ps2x.Button(PSB_L1))
-            {
-                domeData.dsp = 24;
-                ET.sendData();
-            }
-        }
-        if(ps2x.ButtonPressed(PSB_PAD_DOWN))
-        {
-            if(ps2x.Button(PSB_L1))
-            {
-                domeData.dsp = 25;
-                ET.sendData();
-            }
-        }
-    */
-
-}
-
+// =======================================================================================
+// //////////////////////////Sound Functions//////////////////////////////////////////////
+// =======================================================================================
 void processSoundCommand(char soundCommand)
 {
     #ifdef SOUND_CFSOUNDIII
-    //cfSound.playfile("happy.wav");  
-    //cfSound.setVolume(20);
+    cfSound.playfile("happy.wav");  
+    cfSound.setVolume(20);
     switch (soundCommand) 
     {
         case '+':
@@ -1852,271 +2159,84 @@ void processSoundCommand(char soundCommand)
 
 void ps3soundControl(PS3BT* myPS3 = PS3Nav, int controllerNumber = 1)
 {
-
-#ifdef EXTRA_SOUNDS
-    switch (controllerNumber)
-    {
+  #ifdef EXTRA_SOUNDS
+      switch (controllerNumber)
+      {
       case 1:
-#endif
-    	if (!(myPS3->getButtonPress(L1)||myPS3->getButtonPress(L2)||myPS3->getButtonPress(PS)))
-	    {
-	      if (myPS3->getButtonClick(UP))          processSoundCommand('1');    
-	      else if (myPS3->getButtonClick(RIGHT))  processSoundCommand('2');    
-	      else if (myPS3->getButtonClick(DOWN))   processSoundCommand('3');    
-	      else if (myPS3->getButtonClick(LEFT))   processSoundCommand('4');    
-	    } else if (myPS3->getButtonPress(L2))
-	    {
-	      if (myPS3->getButtonClick(UP))          processSoundCommand('5');    
-	      else if (myPS3->getButtonClick(RIGHT))  processSoundCommand('6');    
-	      else if (myPS3->getButtonClick(DOWN))   processSoundCommand('7');    
-	      else if (myPS3->getButtonClick(LEFT))   processSoundCommand('8');    
-	    } else if (myPS3->getButtonPress(L1))
-	    {
-	      if (myPS3->getButtonClick(UP))          processSoundCommand('+');    
-	      else if (myPS3->getButtonClick(DOWN))   processSoundCommand('-');    
-	      else if (myPS3->getButtonClick(LEFT))   processSoundCommand('9');    
-	      else if (myPS3->getButtonClick(RIGHT))  processSoundCommand('0');    
-	    } 
-#ifdef EXTRA_SOUNDS
+        // #endif
+        if (!(myPS3->getButtonPress(L1) || myPS3->getButtonPress(L2) || myPS3->getButtonPress(PS)))
+        {
+          if (myPS3->getButtonClick(UP))
+            processSoundCommand('1');
+          else if (myPS3->getButtonClick(RIGHT))
+            processSoundCommand('2');
+          else if (myPS3->getButtonClick(DOWN))
+            processSoundCommand('3');
+          else if (myPS3->getButtonClick(LEFT))
+            processSoundCommand('4');
+        }
+        else if (myPS3->getButtonPress(L2))
+        {
+          if (myPS3->getButtonClick(UP))
+            processSoundCommand('5');
+          else if (myPS3->getButtonClick(RIGHT))
+            processSoundCommand('6');
+          else if (myPS3->getButtonClick(DOWN))
+            processSoundCommand('7');
+          else if (myPS3->getButtonClick(LEFT))
+            processSoundCommand('8');
+        }
+        else if (myPS3->getButtonPress(L1))
+        {
+          if (myPS3->getButtonClick(UP))
+            processSoundCommand('+');
+          else if (myPS3->getButtonClick(DOWN))
+            processSoundCommand('-');
+          else if (myPS3->getButtonClick(LEFT))
+            processSoundCommand('9');
+          else if (myPS3->getButtonClick(RIGHT))
+            processSoundCommand('0');
+        }
+        // #ifdef EXTRA_SOUNDS
         break;
       case 2:
-    	if (!(myPS3->getButtonPress(L1)||myPS3->getButtonPress(L2)||myPS3->getButtonPress(PS)))
-	    {
-	      if (myPS3->getButtonClick(UP))          processSoundCommand('A');    
-	      else if (myPS3->getButtonClick(RIGHT))  processSoundCommand('B');    
-	      else if (myPS3->getButtonClick(DOWN))   processSoundCommand('C');    
-	      else if (myPS3->getButtonClick(LEFT))   processSoundCommand('D');    
-	    } else if (myPS3->getButtonPress(L2))
-	    {
-	      if (myPS3->getButtonClick(UP))          processSoundCommand('E');    
-	      else if (myPS3->getButtonClick(RIGHT))  processSoundCommand('F');    
-	      else if (myPS3->getButtonClick(DOWN))   processSoundCommand('G');    
-	      else if (myPS3->getButtonClick(LEFT))   processSoundCommand('H');    
-	    } else if (myPS3->getButtonPress(L1))
-	    {
-	      if (myPS3->getButtonClick(UP))          processSoundCommand('I');    
-	      else if (myPS3->getButtonClick(DOWN))   processSoundCommand('J');    
-	      else if (myPS3->getButtonClick(LEFT))   processSoundCommand('K');    
-	      else if (myPS3->getButtonClick(RIGHT))  processSoundCommand('L');    
-	    } 
+        if (!(myPS3->getButtonPress(L1) || myPS3->getButtonPress(L2) || myPS3->getButtonPress(PS)))
+        {
+          if (myPS3->getButtonClick(UP))
+            processSoundCommand('A');
+          else if (myPS3->getButtonClick(RIGHT))
+            processSoundCommand('B');
+          else if (myPS3->getButtonClick(DOWN))
+            processSoundCommand('C');
+          else if (myPS3->getButtonClick(LEFT))
+            processSoundCommand('D');
+        }
+        else if (myPS3->getButtonPress(L2))
+        {
+          if (myPS3->getButtonClick(UP))
+            processSoundCommand('E');
+          else if (myPS3->getButtonClick(RIGHT))
+            processSoundCommand('F');
+          else if (myPS3->getButtonClick(DOWN))
+            processSoundCommand('G');
+          else if (myPS3->getButtonClick(LEFT))
+            processSoundCommand('H');
+        }
+        else if (myPS3->getButtonPress(L1))
+        {
+          if (myPS3->getButtonClick(UP))
+            processSoundCommand('I');
+          else if (myPS3->getButtonClick(DOWN))
+            processSoundCommand('J');
+          else if (myPS3->getButtonClick(LEFT))
+            processSoundCommand('K');
+          else if (myPS3->getButtonClick(RIGHT))
+            processSoundCommand('L');
+        }
         break;
-	}
-#endif
-
-}
-
-
-
-void footMotorDrive()
-{
-  //Flood control prevention
-  if ((millis() - previousFootMillis) < serialLatency) return;  
-  if (PS3Nav->PS3NavigationConnected) ps3FootMotorDrive(PS3Nav);
-  //TODO:  Drive control must be mutually exclusive - for safety
-  //Future: I'm not ready to test that before FanExpo
-  //if (PS3Nav2->PS3NavigationConnected) ps3FootMotorDrive(PS3Nav2);
-}  
-
-void domeDrive()
-{
-  //Flood control prevention
-  //This is intentionally set to double the rate of the Foot Motor Latency
-  if ((millis() - previousDomeMillis) < (2*serialLatency) ) return;  
-  
-
-  int domeRotationSpeed = 0;
-  int ps3NavControlSpeed = 0;
-  int ps3Nav2ControlSpeed = 0;
-  if (PS3Nav->PS3NavigationConnected) ps3NavControlSpeed = ps3DomeDrive(PS3Nav,1);
-  if (PS3Nav2->PS3NavigationConnected) ps3Nav2ControlSpeed = ps3DomeDrive(PS3Nav2,2);
-
-  //In a two controller system, give dome priority to the secondary controller.
-  //Only allow the "Primary" controller dome control if the Secondary is NOT spinnning it
-  
-  if ( abs(ps3Nav2ControlSpeed) > 0 )
-  {
-    domeRotationSpeed = ps3Nav2ControlSpeed;
-  } else
-  {
-    domeRotationSpeed = ps3NavControlSpeed; 
   }
-  rotateDome(domeRotationSpeed,"Controller Move");
-}  
-
-
-void moveHoloServo(int pwmPIN, int pulse)
-{
-    domePWM.setPWM(pwmPIN, 0, pulse);
+  #endif
 }
-
-void holoLightFlicker(int pwmPINred, int pwmPINgreen, int pwmPINblue)
-{
-    int flicker = random(4096);
-    domePWM.setPWM(pwmPINred, 0, flicker*0.75);
-    domePWM.setPWM(pwmPINgreen, 0, flicker*0.75);
-    domePWM.setPWM(pwmPINblue, 0, random(4096));
-}
-
-void holoLightOff(int pwmPINred, int pwmPINgreen, int pwmPINblue)
-{
-    domePWM.setPWM(pwmPINred, 0, PWM_OFF);
-    domePWM.setPWM(pwmPINgreen, 0, PWM_OFF);
-    domePWM.setPWM(pwmPINblue, 0, PWM_OFF);
-}
-
-void holoLightOn(int pwmPINred, int pwmPINgreen, int pwmPINblue)
-{
-    domePWM.setPWM(pwmPINred, 0, 4094);
-    domePWM.setPWM(pwmPINgreen, 0, 4094);
-    domePWM.setPWM(pwmPINblue, 0, 4094);
-}
-
-void randomHoloMovement(int holoprojector)
-{
-    currentMillis = millis();
-
-    switch (holoprojector)
-    {
-      case HOLO_FRONT:   
-          if (currentMillis > holoFrontRandomTime)
-          {  
-              holoFrontRandomTime = currentMillis + random(HOLO_DELAY);
-              //TODO:  Determine range of Holoprojector X/Y better
-                  //hpY=random(80,120);
-                  //hpX=random(80,120); 
-              moveHoloServo(HOLO_FRONT_X_PWM_PIN, random(HOLO_FRONT_X_SERVO_MIN,HOLO_FRONT_X_SERVO_MAX));
-              moveHoloServo(HOLO_FRONT_Y_PWM_PIN, random(HOLO_FRONT_Y_SERVO_MIN,HOLO_FRONT_Y_SERVO_MAX));
-              int ledState = random(1,10);
-              switch( ledState )
-              {
-                  case 0:
-                  case 1:
-                  case 2:
-                  case 3:
-                      holoLightFrontStatus = HOLO_LED_OFF;
-                      holoLightOff(HOLO_FRONT_RED_PWM_PIN, HOLO_FRONT_GREEN_PWM_PIN, HOLO_FRONT_BLUE_PWM_PIN);
-                      break;
-                  case 4:
-                  case 5:
-                  case 6:
-                  case 7:
-                      holoLightFrontStatus = HOLO_LED_ON;
-                      holoLightOn(HOLO_FRONT_RED_PWM_PIN, HOLO_FRONT_GREEN_PWM_PIN, HOLO_FRONT_BLUE_PWM_PIN);
-                      break;
-                  default:
-                      holoLightFrontStatus = HOLO_LED_FLICKER;
-                      break;
-              }
-          }
-          if (holoLightFrontStatus == HOLO_LED_FLICKER)
-          {
-              holoLightFlicker(HOLO_FRONT_RED_PWM_PIN, HOLO_FRONT_GREEN_PWM_PIN, HOLO_FRONT_BLUE_PWM_PIN);
-          }        
-          break;
-      case HOLO_BACK:
-            if (currentMillis > holoBackRandomTime)
-            {  
-                holoBackRandomTime = currentMillis + random(HOLO_DELAY*1.5);
-                //TODO:  Determine range of Holoprojector X/Y better
-                    //hpY=random(80,120);
-                    //hpX=random(80,120); 
-                moveHoloServo(HOLO_BACK_X_PWM_PIN, random(HOLO_BACK_X_SERVO_MIN,HOLO_BACK_X_SERVO_MAX));
-                moveHoloServo(HOLO_BACK_Y_PWM_PIN, random(HOLO_BACK_Y_SERVO_MIN,HOLO_BACK_Y_SERVO_MAX));
-                int ledState = random(1,10);
-                switch( ledState )
-                {
-                    case 0:
-                    case 1:
-                    case 2:
-                    case 3:
-                    case 4:
-                        holoLightBackStatus = HOLO_LED_OFF;
-                        holoLightOff(HOLO_BACK_RED_PWM_PIN, HOLO_BACK_GREEN_PWM_PIN, HOLO_BACK_BLUE_PWM_PIN);
-                        break;
-                    case 5:
-                    case 6:
-                    case 7:
-                    case 8:
-                        holoLightBackStatus = HOLO_LED_ON;
-                        holoLightOn(HOLO_BACK_RED_PWM_PIN, HOLO_BACK_GREEN_PWM_PIN, HOLO_BACK_BLUE_PWM_PIN);
-                        break;
-                    default:
-                        holoLightBackStatus = HOLO_LED_FLICKER;
-                        break;
-                }
-            }
-            if (holoLightBackStatus == HOLO_LED_FLICKER)
-            {
-                holoLightFlicker(HOLO_BACK_RED_PWM_PIN, HOLO_BACK_GREEN_PWM_PIN, HOLO_BACK_BLUE_PWM_PIN);
-            }        
-            break;
-        case HOLO_TOP:  
-            if (currentMillis > holoTopRandomTime)
-            {  
-                holoTopRandomTime = currentMillis + random(HOLO_DELAY*1.5);
-                //TODO:  Determine range of Holoprojector X/Y better
-                    //hpY=random(80,120);
-                    //hpX=random(80,120); 
-                moveHoloServo(HOLO_TOP_X_PWM_PIN, random(HOLO_TOP_X_SERVO_MIN,HOLO_TOP_X_SERVO_MAX));
-                moveHoloServo(HOLO_TOP_Y_PWM_PIN, random(HOLO_TOP_Y_SERVO_MIN,HOLO_TOP_Y_SERVO_MAX));
-                int ledState = random(1,10);
-                switch( ledState )
-                {
-                    case 0:
-                    case 1:
-                    case 2:
-                    case 3:
-                    case 4:
-                    case 5:
-                        holoLightTopStatus = HOLO_LED_OFF;
-                        holoLightOff(HOLO_TOP_RED_PWM_PIN, HOLO_TOP_GREEN_PWM_PIN, HOLO_TOP_BLUE_PWM_PIN);
-                        break;
-                    case 6:
-                    case 7:
-                    case 8:
-                        holoLightTopStatus = HOLO_LED_ON;
-                        holoLightOn(HOLO_TOP_RED_PWM_PIN, HOLO_TOP_GREEN_PWM_PIN, HOLO_TOP_BLUE_PWM_PIN);
-                        break;
-                    default:
-                        holoLightTopStatus = HOLO_LED_FLICKER;
-                        break;
-                }
-            }
-            if (holoLightTopStatus == HOLO_LED_FLICKER)
-            {
-                holoLightFlicker(HOLO_TOP_RED_PWM_PIN, HOLO_TOP_GREEN_PWM_PIN, HOLO_TOP_BLUE_PWM_PIN);
-            }        
-            break;
-      }  
-}
-
-void holoprojector()
-{
-   boolean isFrontHoloActivelyControlled = false;
-   if (PS3Nav->PS3NavigationConnected) 
-   {
-     if ( ps3Holoprojector(PS3Nav,1) )
-     {
-       isFrontHoloActivelyControlled = true;
-     }
-   }
-   if (PS3Nav2->PS3NavigationConnected) 
-      {
-     if ( ps3Holoprojector(PS3Nav2,2) )
-     {
-       isFrontHoloActivelyControlled = true;
-     }
-   }
-  if (!isFrontHoloActivelyControlled) randomHoloMovement(HOLO_FRONT);
-  randomHoloMovement(HOLO_BACK);
-  randomHoloMovement(HOLO_TOP);
-}  
-
-void toggleSettings()
-{
-   if (PS3Nav->PS3NavigationConnected) ps3ToggleSettings(PS3Nav);
-   if (PS3Nav2->PS3NavigationConnected) ps3ToggleSettings(PS3Nav2);
-}  
 
 void soundControl()
 {
@@ -2138,84 +2258,27 @@ void soundControl()
     }
     #endif
 }  
+// =======================================================================================
+// //////////////////////////END: Sound Functions/////////////////////////////////////////
+// =======================================================================================
 
-
-void openUtilArm(int arm, int position = utilArmOpenPos)
-{
-    //When passed a position - this can "partially" open the arms.
-    //Great for more interaction
-    moveUtilArm(arm, utilArmOpenPos);
-}
-
-void closeUtilArm(int arm)
-{
-    moveUtilArm(arm, utilArmClosedPos);
-}
-
-void waveUtilArm(int arm)
-{
-    switch (arm)
-    {
-      case UTIL_ARM_TOP:
-        if(isUtilArmTopOpen == false){
-          openUtilArm(UTIL_ARM_TOP);
-        } else {
-          closeUtilArm(UTIL_ARM_TOP);
-        }
-        break;
-      case UTIL_ARM_BOTTOM:  
-        if(isUtilArmBottomOpen == false){
-          openUtilArm(UTIL_ARM_BOTTOM);
-        } else {
-          closeUtilArm(UTIL_ARM_BOTTOM);
-        }
-        break;
-    }
-}
-
-void moveUtilArm(int arm, int position)
-{
-    switch (arm)
-    {
-      case UTIL_ARM_TOP:
-        UtilArmTopServo.write(position);
-        if ( position == utilArmClosedPos)
-        {
-          isUtilArmTopOpen = false;
-        } else
-        {
-          isUtilArmTopOpen = true;
-        }
-        break;
-      case UTIL_ARM_BOTTOM:  
-        UtilArmBottomServo.write(position);
-        if ( position == utilArmClosedPos)
-        {
-          isUtilArmBottomOpen = false;
-        } else
-        {
-          isUtilArmBottomOpen = true;
-        }
-        break;
-    }
-}
 
 // =======================================================================================
 //          Flash Coin Slot LED Function
 // =======================================================================================
-void flashCoinSlotLEDs()
-{
-  for(int i = 0; i<numberOfCoinSlotLEDs; i++)
-  {
-    if(millis() > nextCoinSlotLedFlash[i])
-    {
-      if(coinSlotLedState[i] == LOW) coinSlotLedState[i] = HIGH; 
-      else coinSlotLedState[i] = LOW;
-      digitalWrite(COIN_SLOT_LED_PINS[i],coinSlotLedState[i]);
-      nextCoinSlotLedFlash[i] = millis()+random(100, 1000) ; // next toggle random time
-    } 
-  }
-}
+// void flashCoinSlotLEDs()
+// {
+//   for(int i = 0; i<numberOfCoinSlotLEDs; i++)
+//   {
+//     if(millis() > nextCoinSlotLedFlash[i])
+//     {
+//       if(coinSlotLedState[i] == LOW) coinSlotLedState[i] = HIGH; 
+//       else coinSlotLedState[i] = LOW;
+//       digitalWrite(COIN_SLOT_LED_PINS[i],coinSlotLedState[i]);
+//       nextCoinSlotLedFlash[i] = millis()+random(100, 1000) ; // next toggle random time
+//     } 
+//   }
+// }
 
 #ifdef TEST_CONROLLER
 void testPS3Controller(PS3BT* myPS3 = PS3Nav)
