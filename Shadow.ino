@@ -374,10 +374,10 @@ void setup()
     while (!Serial); // Wait for serial port to connect - used on Leonardo, Teensy and other boards with built-in USB CDC serial connection
     if (Usb.Init() == -1)
     {
-        Serial.print(F("\r\nOSC did not start"));
+        Serial.print(("\r\nOSC did not start"));
         while (1); //halt
     }
-    Serial.print(F("\r\nBluetooth Library Started"));
+    Serial.print(("\r\nBluetooth Library Started"));
     output.reserve(200); // Reserve 200 bytes for the output string
 
     //Setup for PS3
@@ -391,7 +391,7 @@ void setup()
 
     //Setup for Serial1:: Sound 
     #ifdef SOUND_CFSOUNDIII
-      cfSound.setup(&Serial1,2400);    
+      cfSound.setup(&Serial1,2400);
     #endif
     #ifdef SOUND_MP3TRIGGER
       trigger.setup(&Serial1);
