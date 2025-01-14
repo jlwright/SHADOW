@@ -441,7 +441,8 @@ void setup()
       ET.begin(details(domeData), &Wire);
     #endif
 
-
+    Serial.print("\r\nback from pwm servo driver");
+    
     //Setup for Utility Arm Servo's    
     UtilArmTopServo.attach(UTILITY_ARM_TOP_PIN);  
     UtilArmBottomServo.attach(UTILITY_ARM_BOTTOM_PIN);
@@ -456,10 +457,12 @@ void setup()
     //   digitalWrite(COIN_SLOT_LED_PINS[i], LOW); // all LEDs off
     //   nextCoinSlotLedFlash[i] = millis() +random(100, 1000);
     // }
+    Serial.print("\r\nend of setup()");
 }
 
 boolean readUSB()
 {
+  Serial.print("\r\nin readUSB()");
     //The more devices we have connected to the USB or BlueTooth, the more often Usb.Task need to be called to eliminate latency.
     Usb.Task();
     if (PS3Nav->PS3NavigationConnected ) Usb.Task();
@@ -467,7 +470,8 @@ boolean readUSB()
     if ( criticalFaultDetect() )
     {
       //We have a fault condition that we want to ensure that we do NOT process any controller data!!!
-      // flushAndroidTerminal();
+       flushAndroidTerminal();
+       Serial.print("\r\ncriticalFaultDetect");
       return false;
     }
 	//Fix backported from Shadow_MD to fix "Dome Twitch"
@@ -481,7 +485,7 @@ boolean readUSB()
 
 void loop()
 {
-    // initAndroidTerminal();
+    initAndroidTerminal();
     
     //Useful to enable with serial console when having controller issues.
     #ifdef TEST_CONROLLER
@@ -510,11 +514,12 @@ void loop()
     toggleSettings();
     soundControl();
     // flashCoinSlotLEDs();
-    // flushAndroidTerminal();
+    flushAndroidTerminal();
 }
 
 void onInitPS3()
 {
+  Serial.print("\r\nin onInitPS3()");
     String btAddress = getLastConnectedBtMAC();
     PS3Nav->setLedOn(LED1);
     isPS3NavigatonInitialized = true;
@@ -587,41 +592,41 @@ void swapPS3NavControllers()
     PS3Nav2->attachOnInit(onInitPS3Nav2); 
 }
 
-// void initAndroidTerminal()
-// {
-//     #ifdef BLUETOOTH_SERIAL
-//     //Setup for Bluetooth Serial Monitoring
-//     if (SerialBT.connected)
-//     {
-//         if (firstMessage)
-//         {
-//             firstMessage = false;
-//             SerialBT.println(F("Hello from S.H.A.D.O.W.")); // Send welcome message
-//         }
-//         //TODO:  Process input from the SerialBT
-//         //if (SerialBT.available())
-//         //    Serial.write(SerialBT.read());
-//     }
-//     else
-//     {
-//         firstMessage = true;
-//     }
-//     #endif
-// }
+void initAndroidTerminal()
+{
+    #ifdef BLUETOOTH_SERIAL
+    //Setup for Bluetooth Serial Monitoring
+    if (SerialBT.connected)
+    {
+        if (firstMessage)
+        {
+            firstMessage = false;
+            SerialBT.println(F("Hello from S.H.A.D.O.W.")); // Send welcome message
+        }
+        //TODO:  Process input from the SerialBT
+        //if (SerialBT.available())
+        //    Serial.write(SerialBT.read());
+    }
+    else
+    {
+        firstMessage = true;
+    }
+    #endif
+}
 
-// void flushAndroidTerminal()
-// {
-//     if (output != "")
-//     {
-//         if (Serial) Serial.println(output);
-//         #ifdef BLUETOOTH_SERIAL
-//         if (SerialBT.connected)
-//             SerialBT.println(output);
-//             SerialBT.send();
-//         #endif
-//         output = ""; // Reset output string
-//     }
-// }
+void flushAndroidTerminal()
+{
+    if (output != "")
+    {
+        if (Serial) Serial.println(output);
+        #ifdef BLUETOOTH_SERIAL
+        if (SerialBT.connected)
+            SerialBT.println(output);
+            SerialBT.send();
+        #endif
+        output = ""; // Reset output string
+    }
+}
 
 void automateDome()
 {

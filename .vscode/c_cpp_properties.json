@@ -3,7 +3,7 @@
         {
             "name": "Arduino",
             "includePath": [
-                "${workspaceFolder}/libraries/**"
+                "${workspaceFolder}/**"
             ],
             "defines": [
                 "_DEBUG",
