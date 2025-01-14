@@ -19,7 +19,7 @@ SyRenSimplified SR; // We'll name the SyRen object SR.
                                         
 void setup()
 {
-  Serial.begin(9600); // This is the baud rate you chose with the DIP switches.
+  SyRenTXPinSerial.begin(9600); // This is the baud rate you chose with the DIP switches.
 }
 
 

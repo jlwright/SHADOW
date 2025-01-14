@@ -5,7 +5,7 @@
 #include <SoftwareSerial.h>
 #include <SyRenSimplified.h>
 
-SoftwareSerial SWSerial(2, 3); // RX on pin 2 (unused), TX on pin 3 (to S1).
+SoftwareSerial SWSerial(NOT_A_PIN, 11); // RX on no pin (unused), TX on pin 11 (to S1).
 SyRenSimplified SR(SWSerial); // Use SWSerial as the serial port.
 
 void setup()

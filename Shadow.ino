@@ -106,6 +106,7 @@ int motorControllerBaudRate = 9600; // Set the baud rate for the Syren motor con
   #include <spi4teensy3.h>
 #endif
 #include <Sabertooth.h>
+#include <SyRenSimplified.h>
 #include <CytronMotorDriver.h>
 #include <Servo.h>
 #include <LedControl.h>

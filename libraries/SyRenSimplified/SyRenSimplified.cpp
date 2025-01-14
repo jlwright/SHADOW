@@ -1,6 +1,6 @@
 /*
 Arduino Library for SyRen Simplified Serial
-Copyright (c) 2012 Dimension Engineering LLC
+Copyright (c) 2012-2013 Dimension Engineering LLC
 http://www.dimensionengineering.com/arduino
 
 Permission to use, copy, modify, and/or distribute this software for any
@@ -19,12 +19,12 @@ USE OR PERFORMANCE OF THIS SOFTWARE.
 #include "SyRenSimplified.h"
 
 SyRenSimplified::SyRenSimplified()
-  : _port(Serial)
+  : _port(SyRenTXPinSerial)
 {
   
 }
 
-SyRenSimplified::SyRenSimplified(Stream& port)
+SyRenSimplified::SyRenSimplified(Print& port)
   : _port(port)
 {
   
@@ -33,7 +33,7 @@ SyRenSimplified::SyRenSimplified(Stream& port)
 void SyRenSimplified::motor(int power)
 {
   byte command;
-  power = constrain(power, -127, 127);
+  power = constrain(power, -126, 126);
   command = (power < 0 ? 127 : 128) + power;
   _port.write(command);
 }
