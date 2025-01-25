@@ -325,25 +325,24 @@ int badPS3Data = 0;
 #endif
 String output = "";
 
+boolean executingCommand = false;
 boolean isFootMotorStopped = true;
 boolean isDomeMotorStopped = true;
-
 boolean isPS3NavigatonInitialized = false;
 boolean isSecondaryPS3NavigatonInitialized = false;
 
 byte vol = 0; // 0 = full volume, 255 off
 boolean isStickEnabled = true;
-byte isAutomateDomeOn = false;
-unsigned long automateMillis = 0;
 
 // Dome Automation Variables
 boolean domeAutomation = false;
+byte isAutomateDomeOn = false;
 int domeTurnDirection = 1;  // 1 = positive turn, -1 negative turn
 float domeTargetPosition = 0; // (0 - 359) - degrees in a circle, 0 = home
 unsigned long domeStopTurnTime = 0;    // millis() when next turn should stop
 unsigned long domeStartTurnTime = 0;  // millis() when next turn should start
 int domeStatus = 0;  // 0 = stopped, 1 = prepare to turn, 2 = turning
-
+unsigned long automateMillis = 0;
 
 byte action = 0;
 unsigned long DriveMillis = 0;
@@ -696,6 +695,57 @@ void automateDome()
     }
 }
 
+void sendDataToDomeBoard() {
+  executingCommand = true;
+  String command = "";
+  if (button1) {
+    command = "CMD:PERISCOPE";
+  } else if (button2) {
+    command = "CMD:LIFEFORMSCANNER";
+  } else if (button3) {
+    command = "CMD:ZAPPER";
+  } else if (button4) {
+    command = "CMD:BADMOTIVATOR";
+  } else if (button5) {
+    command = "CMD:LIGHTSABER";
+  } else if (button6) {
+    command = "CMD:OVERLOAD";
+  } else if (button7) {
+    command = "CMD:PANELWAVE";
+  } else if (button8) {
+    command = "CMD:TOGGLEMAGICPANEL";
+  } else if (button9) {
+    command = "CMD:TOGGLEHOLOS";
+  } else {
+    Serial.println("This is not a dome command");
+    executingCommand = false;
+    return;
+  }
+  Serial.println(command);
+  printAck(command);
+  executingCommand = false;
+}
+
+//define actions for all possible commands from body to dome
+// void processCommand(String command){
+//   if (command == "CMD:PERISCOPE") {
+//     //
+//   } else if (command == "CMD:LIFEFORMSCANNER") {
+//     //
+//   } else {
+//     Serial.println("*** Unknown dome command");
+//     executingCommand = false;
+//     return;
+//   }
+//   printAck(command);
+//   executingCommand = false; //finished executing command
+// }
+
+void printAck(String command) {
+  Serial.print("*** ");
+  Serial.print(command);
+  Serial.println(" sent to Dome board\n");  //print ACK to serial
+}
 
 #pragma region ControllerFaultDetection
 // =======================================================================================
