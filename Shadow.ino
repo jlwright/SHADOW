@@ -151,12 +151,12 @@ int motorControllerBaudRate = 9600; // Set the baud rate for the Syren motor con
 // ---------------------------------------------------------------------------------------
 //                          User Settings
 // ---------------------------------------------------------------------------------------
-//Primary Controller bound to Gmyle Class 1 Adapter 
-//String PS3MoveNavigatonPrimaryMAC = "04:76:6E:87:B0:F5"; //If using multiple controlers, designate a primary
-
-//Primary Controller bound to Parani UD-100 
-String PS3MoveNavigatonPrimaryMAC = "00:07:04:05:EA:DF"; //If using multiple controlers, designate a primary
-// String PS3MoveNavigatonSecondaryMAC = "00:07:04:05:EA:DF";
+//TRENDnet dongle MAC: 00:15:83:E4:2B:8D
+//Primary (left) PS3Nav MAC: 04:76:6E:E9:1B:0C
+//Secondary (right) PS3Nav MAC: 
+//Primary Controller bound to TRENDnet TBW-107UB 
+String PS3MoveNavigatonPrimaryMAC = "04:76:6E:E9:1B:0C"; //If using multiple controlers, designate a primary
+// String PS3MoveNavigatonSecondaryMAC = "XX:XX:XX:XX:XX:XX";
 
 #define FOOT_CONTROLLER 3 //0 for Sabertooth Serial or 
                           //1 for individual R/C output (for Q85/NEO motors with 1 controller for each foot) or  
@@ -320,6 +320,7 @@ USB Usb;
 //USBHub Hub1(&Usb); // Some dongles have a hub inside
 BTD Btd(&Usb); // You have to create the Bluetooth Dongle instance like so
 PS3BT *PS3Nav=new PS3BT(&Btd);
+// PS3BT *PS3Nav=new PS3BT(&Btd, 0xA8, 0x6E, 0x84, 0xF7, 0xEE, 0x44); //BT dongle MAC is A8:6E:84:F7:EE:44
 PS3BT *PS3Nav2=new PS3BT(&Btd);
 //Used for PS3 Fault Detection
 uint32_t msgLagTime = 0;
@@ -375,10 +376,10 @@ void setup()
     while (!Serial); // Wait for serial port to connect - used on Leonardo, Teensy and other boards with built-in USB CDC serial connection
     if (Usb.Init() == -1)
     {
-        Serial.print(("\r\nOSC did not start"));
+        Serial.println(("OSC did not start"));
         while (1); //halt
     }
-    Serial.print(("\r\nBluetooth Library Started"));
+    Serial.println(("Bluetooth Library Started"));
     output.reserve(200); // Reserve 200 bytes for the output string
 
     //Setup for PS3
@@ -442,8 +443,6 @@ void setup()
       ET.begin(details(domeData), &Wire);
     #endif
 
-    Serial.print("\r\nback from pwm servo driver");
-    
     //Setup for Utility Arm Servo's    
     UtilArmTopServo.attach(UTILITY_ARM_TOP_PIN);  
     UtilArmBottomServo.attach(UTILITY_ARM_BOTTOM_PIN);
@@ -463,7 +462,6 @@ void setup()
 
 boolean readUSB()
 {
-  Serial.print("\r\nin readUSB()");
     //The more devices we have connected to the USB or BlueTooth, the more often Usb.Task need to be called to eliminate latency.
     Usb.Task();
     if (PS3Nav->PS3NavigationConnected ) Usb.Task();
@@ -471,8 +469,8 @@ boolean readUSB()
     if ( criticalFaultDetect() )
     {
       //We have a fault condition that we want to ensure that we do NOT process any controller data!!!
-       flushAndroidTerminal();
-       Serial.print("\r\ncriticalFaultDetect");
+      Serial.print("\r\ncriticalFaultDetect");
+      flushAndroidTerminal();
       return false;
     }
 	//Fix backported from Shadow_MD to fix "Dome Twitch"
@@ -520,7 +518,6 @@ void loop()
 
 void onInitPS3()
 {
-  Serial.print("\r\nin onInitPS3()");
     String btAddress = getLastConnectedBtMAC();
     PS3Nav->setLedOn(LED1);
     isPS3NavigatonInitialized = true;
