@@ -698,23 +698,24 @@ void automateDome()
 void sendDataToDomeBoard() {
   executingCommand = true;
   String command = "";
-  if (button1) {
+  int cmdNo;
+  if (cmdNo) {
     command = "CMD:PERISCOPE";
-  } else if (button2) {
+  } else if (cmdNo) {
     command = "CMD:LIFEFORMSCANNER";
-  } else if (button3) {
+  } else if (cmdNo) {
     command = "CMD:ZAPPER";
-  } else if (button4) {
+  } else if (cmdNo) {
     command = "CMD:BADMOTIVATOR";
-  } else if (button5) {
+  } else if (cmdNo) {
     command = "CMD:LIGHTSABER";
-  } else if (button6) {
+  } else if (cmdNo) {
     command = "CMD:OVERLOAD";
-  } else if (button7) {
+  } else if (cmdNo) {
     command = "CMD:PANELWAVE";
-  } else if (button8) {
+  } else if (cmdNo) {
     command = "CMD:TOGGLEMAGICPANEL";
-  } else if (button9) {
+  } else if (cmdNo) {
     command = "CMD:TOGGLEHOLOS";
   } else {
     Serial.println("This is not a dome command");
