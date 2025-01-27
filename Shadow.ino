@@ -106,6 +106,7 @@ int motorControllerBaudRate = 9600; // Set the baud rate for the Syren motor con
 #include <CytronMotorDriver.h>
 #include <Servo.h>
 #include <LedControl.h>
+#include <DomeCommandEnums.h>
 // Satisfy IDE, which only needs to see the include statment in the ino.
 #ifdef dobogusinclude
   #include <spi4teensy3.h>
@@ -188,7 +189,6 @@ int time360DomeTurnRight = 300;  // milliseconds for dome to complete 360 turn a
 #define SHADOW_VERBOSE     //uncomment this for console VERBOSE output
 //#define BLUETOOTH_SERIAL     //uncomment this for console output via bluetooth.  
 // NOTE:  BLUETOOTH_SERIAL is suspected of adding CPU load in high traffic areas
-
 
 // ---------------------------------------------------------------------------------------
 //                          Utility Arm Settings
@@ -469,6 +469,11 @@ void loop() {
       return;
     }
 
+    for (int i = 0; i <= 10; i++) {
+      sendDataToDomeBoard(i);
+      delay(1000);
+    }
+
     //LOOP through functions from highest to lowest priority.
     footMotorDrive();
     // if ( !readUSB() )
@@ -695,57 +700,47 @@ void automateDome()
     }
 }
 
-void sendDataToDomeBoard() {
+void sendDataToDomeBoard(int cmdNo) {
   executingCommand = true;
   String command = "";
-  int cmdNo;
-  if (cmdNo) {
-    command = "CMD:PERISCOPE";
-  } else if (cmdNo) {
-    command = "CMD:LIFEFORMSCANNER";
-  } else if (cmdNo) {
-    command = "CMD:ZAPPER";
-  } else if (cmdNo) {
-    command = "CMD:BADMOTIVATOR";
-  } else if (cmdNo) {
-    command = "CMD:LIGHTSABER";
-  } else if (cmdNo) {
-    command = "CMD:OVERLOAD";
-  } else if (cmdNo) {
-    command = "CMD:PANELWAVE";
-  } else if (cmdNo) {
-    command = "CMD:TOGGLEMAGICPANEL";
-  } else if (cmdNo) {
-    command = "CMD:TOGGLEHOLOS";
-  } else {
-    Serial.println("This is not a dome command");
-    executingCommand = false;
-    return;
+  switch (cmdNo) {
+    case 0:
+      command = "CMD:PERISCOPE";
+    case 1:
+      command = "CMD:LIFEFORMSCANNER";
+    case 2:
+      command = "CMD:ZAPPER";
+    case 3:
+      command = "CMD:BADMOTIVATOR";
+    case 4:
+      command = "CMD:LIGHTSABER";
+    case 5:
+      command = "CMD:OVERLOAD";
+    case 6:
+      command = "CMD:PANELWAVE";
+    case 7:
+      command = "CMD:PANELDANCE";
+    case 8:
+      command = "CMD:TOGGLEMAGICPANEL";
+    case 9:
+      command = "CMD:TOGGLEHOLOS";
+    case 10:
+      command = "CMD:TOGGLEHOLOAUTOMOVE";
+    default:
+      Serial.println("This is not a dome command");
+      executingCommand = false;
+      return;
   }
+
   Serial.println(command);
   printAck(command);
   executingCommand = false;
 }
 
-//define actions for all possible commands from body to dome
-// void processCommand(String command){
-//   if (command == "CMD:PERISCOPE") {
-//     //
-//   } else if (command == "CMD:LIFEFORMSCANNER") {
-//     //
-//   } else {
-//     Serial.println("*** Unknown dome command");
-//     executingCommand = false;
-//     return;
-//   }
-//   printAck(command);
-//   executingCommand = false; //finished executing command
-// }
-
 void printAck(String command) {
-  Serial.print("*** ");
+  Serial.print("\r\n*** ");
   Serial.print(command);
-  Serial.println(" sent to Dome board\n");  //print ACK to serial
+  Serial.println(" sent to Dome board\r\n");  //print ACK to serial
 }
 
 #pragma region ControllerFaultDetection

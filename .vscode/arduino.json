@@ -2,5 +2,5 @@
     "board": "arduino:avr:megaADK",
     "sketch": "SHADOW.ino",
     "programmer": "arduinoisp",
-    "port": "COM13"
+    "port": "COM5"
 }
