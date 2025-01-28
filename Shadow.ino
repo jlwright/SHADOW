@@ -53,46 +53,7 @@
 //
 // =======================================================================================
 
-
-// ---------------------------------------------------------------------------------------
-//                          Drive Controller Settings
-// ---------------------------------------------------------------------------------------
-int motorControllerBaudRate = 9600; // Set the baud rate for the Syren motor controller
-                                    // for packetized options are: 2400, 9600, 19200 and 38400
-                                    
-#define SYREN_ADDR 129      // Serial Address for Dome Syren
-// #define SABERTOOTH_ADDR 128      // Serial Address for Foot Sabertooth
-#define CYTRON_ADDR 128      // Serial Address for Cytron motor controller
-
-#define SteeringFactor 100 //used for steering system speed, higher is faster
-
-// R/C Mode settings...
-#define leftFootPin 44    //connect this pin to motor controller for left foot (R/C mode)
-#define rightFootPin 45   //connect this pin to motor controller for right foot (R/C mode)
-#define leftDirection 1   //change this if your motor is spinning the wrong way
-#define rightDirection 0  //change this if your motor is spinning the wrong way  
-
-
-// ---------------------------------------------------------------------------------------
-//                          Sound Settings
-// ---------------------------------------------------------------------------------------
-//Uncomment one line based on your sound system
-#define SOUND_CFSOUNDIII     //Original system tested with SHADOW
-//#define SOUND_MP3TRIGGER   //Code Tested by Dave C. and Marty M.
-//#define SOUND_ROGUE_RMP3   //Support coming soon
-//#define SOUND_RASBERRYPI   //Support coming soon
-//#define EXTRA_SOUNDS
-
-
-// ---------------------------------------------------------------------------------------
-//                          Dome Control System
-// ---------------------------------------------------------------------------------------
-//Uncomment one line based on your Dome Control
-#define DOME_I2C_ADAFRUIT       //Current SHADOW configuration used with R-Series Logics
-//#define DOME_SERIAL_TEECES    //Original system tested with SHADOW
-//#define DOME_I2C_TEECES       //Untested Nov 2014
-
-
+#pragma region Libraries
 // ---------------------------------------------------------------------------------------
 //                          Libraries
 // ---------------------------------------------------------------------------------------
@@ -106,7 +67,7 @@ int motorControllerBaudRate = 9600; // Set the baud rate for the Syren motor con
 #include <CytronMotorDriver.h>
 #include <Servo.h>
 #include <LedControl.h>
-#include <DomeCommandEnums.h>
+// #include <DomeCommandEnums.h>
 // Satisfy IDE, which only needs to see the include statment in the ino.
 #ifdef dobogusinclude
   #include <spi4teensy3.h>
@@ -147,18 +108,55 @@ int motorControllerBaudRate = 9600; // Set the baud rate for the Syren motor con
 //#ifdef  SOUND_RASBERRYPI
 //TODO:add Raspberry Pi Sound support
 //#endif
+#pragma endregion
 
+#pragma region Settings
+// ---------------------------------------------------------------------------------------
+//                          Drive Controller Settings
+// ---------------------------------------------------------------------------------------
+int motorControllerBaudRate = 9600; // Set the baud rate for the Syren motor controller
+                                    // for packetized options are: 2400, 9600, 19200 and 38400
+                                    
+#define SYREN_ADDR 129      // Serial Address for Dome Syren
+// #define SABERTOOTH_ADDR 128      // Serial Address for Foot Sabertooth
+#define CYTRON_ADDR 128      // Serial Address for Cytron motor controller
+
+#define SteeringFactor 100 //used for steering system speed, higher is faster
+
+// R/C Mode settings...
+#define leftFootPin 44    //connect this pin to motor controller for left foot (R/C mode)
+#define rightFootPin 45   //connect this pin to motor controller for right foot (R/C mode)
+#define leftDirection 1   //change this if your motor is spinning the wrong way
+#define rightDirection 0  //change this if your motor is spinning the wrong way  
+
+// ---------------------------------------------------------------------------------------
+//                          Sound Settings
+// ---------------------------------------------------------------------------------------
+//Uncomment one line based on your sound system
+// #define SOUND_CFSOUNDIII     //Original system tested with SHADOW
+//#define SOUND_MP3TRIGGER   //Code Tested by Dave C. and Marty M.
+//#define SOUND_ROGUE_RMP3   //Support coming soon
+//#define SOUND_RASBERRYPI   //Support coming soon
+//#define EXTRA_SOUNDS
+
+// ---------------------------------------------------------------------------------------
+//                          Dome Control System
+// ---------------------------------------------------------------------------------------
+//Uncomment one line based on your Dome Control
+#define DOME_I2C_ADAFRUIT       //Current SHADOW configuration used with R-Series Logics
+//#define DOME_SERIAL_TEECES    //Original system tested with SHADOW
+//#define DOME_I2C_TEECES       //Untested Nov 2014
 
 // ---------------------------------------------------------------------------------------
 //                          User Settings
 // ---------------------------------------------------------------------------------------
 //TRENDnet dongle MAC: 00:15:83:E4:2B:8D
 //Primary (left) PS3Nav MAC: 04:76:6E:E9:1B:0C
-//Secondary (right) PS3Nav MAC: 
+//Secondary (right) PS3Nav MAC: 00:07:04:05:04:EA
 
 //Primary Controller bound to TRENDnet TBW-107UB 
 String PS3MoveNavigatonPrimaryMAC = "04:76:6E:E9:1B:0C"; //left hand controller
-// String PS3MoveNavigatonSecondaryMAC = "XX:XX:XX:XX:XX:XX"; //right hand controller
+String PS3MoveNavigatonSecondaryMAC = "00:07:04:05:04:EA"; //right hand controller
 
 #define FOOT_CONTROLLER 3 //0 for Sabertooth Serial or 
                           //1 for individual R/C output (for Q85/NEO motors with 1 controller for each foot) or  
@@ -184,7 +182,7 @@ int time360DomeTurnLeft = 1000;  // milliseconds for dome to complete 360 turn a
 int time360DomeTurnRight = 300;  // milliseconds for dome to complete 360 turn at domeAutoSpeed
                                 ///Cut in half to reduce spin.  Offset for different rotation startups due to gearing.
 
-//#define TEST_CONROLLER   //Support coming soon
+// #define TEST_CONROLLER   //Support coming soon
 #define SHADOW_DEBUG       //uncomment this for console DEBUG output
 #define SHADOW_VERBOSE     //uncomment this for console VERBOSE output
 //#define BLUETOOTH_SERIAL     //uncomment this for console output via bluetooth.  
@@ -210,7 +208,9 @@ int UtilArmTopPos = 0;
 
 const int UTIL_ARM_TOP = 1;
 const int UTIL_ARM_BOTTOM = 2;
+#pragma endregion
 
+#pragma region Variables
 // ---------------------------------------------------------------------------------------
 //                          Variables
 // ---------------------------------------------------------------------------------------
@@ -354,6 +354,8 @@ Servo UtilArmBottomServo;  // create servo object to control a servo
   Servo rightFootSignal;
 #endif
 
+#pragma endregion
+
 // =======================================================================================
 //                          Main Program
 // =======================================================================================
@@ -392,13 +394,13 @@ void setup() {
     SyR->setTimeout(300);      //DMB:  How low can we go for safety reasons?  multiples of 100ms
 
     #if FOOT_CONTROLLER == 0
-    //Setup for Sabertooth / Foot Motors
-    ST->autobaud();          // Send the autobaud command to the Sabertooth controller(s).
-    ST->setTimeout(300);      //DMB:  How low can we go for safety reasons?  multiples of 100ms
-    ST->setDeadband(driveDeadBandRange);
+      //Setup for Sabertooth / Foot Motors
+      ST->autobaud();          // Send the autobaud command to the Sabertooth controller(s).
+      ST->setTimeout(300);      //DMB:  How low can we go for safety reasons?  multiples of 100ms
+      ST->setDeadband(driveDeadBandRange);
     #elif FOOT_CONTROLLER == 1
-    leftFootSignal.attach(leftFootPin);
-    rightFootSignal.attach(rightFootPin);
+      leftFootSignal.attach(leftFootPin);
+      rightFootSignal.attach(rightFootPin);
     #elif FOOT_CONTROLLER == 3
       //TODO: setup serial for Cytron
     #endif
@@ -469,10 +471,10 @@ void loop() {
       return;
     }
 
-    for (int i = 0; i <= 10; i++) {
-      sendDataToDomeBoard(i);
-      delay(1000);
-    }
+    // for (int i = 0; i <= 10; i++) {
+    //   sendDataToDomeBoard(i);
+    //   delay(1000);
+    // }
 
     //LOOP through functions from highest to lowest priority.
     footMotorDrive();
@@ -1018,6 +1020,7 @@ void mixBHD(byte stickX, byte stickY, byte maxDriveSpeed){
       First pass, treat the throttle as ON/OFF - not an Analog shift (as Sabertooth code does)
       Based on that Paul passed in Drive Speed 1 or 2.
       */
+     // *** might need to re-map from -255 - 0 - 255
       int maxServoForward = map(maxDriveSpeed, 0, 127, 90, 180); //drivespeed was defined as 0 to 127 for Sabertooth serial, now we want something in an upper servo range (90 to 180)
       int maxServoReverse = map(maxDriveSpeed, 0, 127, 90, 0); //drivespeed was defined as 0 to 127 for Sabertooth serial, now we want something in an upper servo range (90 to 0)
       #if leftDirection == 0
@@ -1049,13 +1052,13 @@ void mixBHD(byte stickX, byte stickY, byte maxDriveSpeed){
 // quick function to stop the feet depending on which drive system we're using...
 void stopFeet() {
   #if FOOT_CONTROLLER == 0
-  ST->stop();
+    ST->stop();
   #elif FOOT_CONTROLLER == 1
-  leftFootSignal.write(90);
-  rightFootSignal.write(90);
+    leftFootSignal.write(90);
+    rightFootSignal.write(90);
   #elif FOOT_CONTROLLER == 3
-  FootMotorLeft.setSpeed(0);
-  FootMotorRight.setSpeed(0);
+    FootMotorLeft.setSpeed(0); //0 (stop) - 255 (full speed)
+    FootMotorRight.setSpeed(0); //0 (stop) - 255 (full speed)
   #endif
 }
 
@@ -1065,7 +1068,6 @@ boolean ps3FootMotorDrive(PS3BT* myPS3 = PS3Nav) {
   int turnnum = 0;
 
   if (isPS3NavigatonInitialized) {
-      // Additional fault control.  Do NOT send additional commands to Sabertooth if no controllers have initialized.
       if (!isStickEnabled) {
             #ifdef SHADOW_VERBOSE
               if ( abs(myPS3->getAnalogHat(LeftHatY)-128) > joystickFootDeadZoneRange)
@@ -1080,6 +1082,7 @@ boolean ps3FootMotorDrive(PS3BT* myPS3 = PS3Nav) {
           isFootMotorStopped = true;
       } else if ( myPS3->getButtonPress(L1) ) {
           //TODO:  Does this need to change this when we support dual controller, or covered by improved isStickEnabled
+          //***MIGHT NEED TO COMMENT THIS ELSE OUT
           stopFeet();
           isFootMotorStopped = true;
       } else {
@@ -1111,6 +1114,45 @@ boolean ps3FootMotorDrive(PS3BT* myPS3 = PS3Nav) {
                     footDriveSpeed-=ramping;
                 else
                     footDriveSpeed = stickSpeed;  
+            }
+            
+            turnnum = (myPS3->getAnalogHat(LeftHatX));
+
+            //TODO:  Is there a better algorithm here?  
+            if ( abs(footDriveSpeed) > 50)
+                turnnum = (map(myPS3->getAnalogHat(LeftHatX), 54, 200, -(turnspeed/4), (turnspeed/4)));
+            else if (turnnum <= 200 && turnnum >= 54)
+                turnnum = (map(myPS3->getAnalogHat(LeftHatX), 54, 200, -(turnspeed/3), (turnspeed/3)));
+            else if (turnnum > 200)
+                turnnum = (map(myPS3->getAnalogHat(LeftHatX), 201, 255, turnspeed/3, turnspeed));
+            else if (turnnum < 54)
+                turnnum = (map(myPS3->getAnalogHat(LeftHatX), 0, 53, -turnspeed, -(turnspeed/3)));
+          #elif FOOT_CONTROLLER == 3
+            //convert sabertooth code to work for cytron
+            if (myPS3->getButtonPress(L2)) {
+              int throttle = 0;
+              if (joystickPosition < 127) {
+                throttle = joystickPosition - myPS3->getAnalogButton(L2);
+              } else {
+                throttle = joystickPosition + myPS3->getAnalogButton(L2);
+              }
+              stickSpeed = (map(throttle, -255, 510, -drivespeed2, drivespeed2));                
+            } else {
+              stickSpeed = (map(joystickPosition, 0, 255, -drivespeed1, drivespeed1));
+            }          
+
+            if ( abs(joystickPosition-128) < joystickFootDeadZoneRange) {
+              footDriveSpeed = 0;
+            } else if (footDriveSpeed < stickSpeed) {
+              if (stickSpeed-footDriveSpeed<(ramping+1))
+                footDriveSpeed+=ramping;
+              else
+                footDriveSpeed = stickSpeed;
+            } else if (footDriveSpeed > stickSpeed) {
+              if (footDriveSpeed-stickSpeed<(ramping+1))
+                footDriveSpeed-=ramping;
+              else
+                footDriveSpeed = stickSpeed;  
             }
             
             turnnum = (myPS3->getAnalogHat(LeftHatX));
@@ -1166,14 +1208,14 @@ boolean ps3FootMotorDrive(PS3BT* myPS3 = PS3Nav) {
               rightFootSignal.write(rightFoot);
             #elif FOOT_CONTROLLER == 3
               //TODO: implement movement for Cytron
-              if (myPS3->getButtonPress(L2))
+              if (myPS3->getButtonPress(L2)) //if speed boost button (L2) pressed
                 mixBHD(myPS3->getAnalogHat(LeftHatX), myPS3->getAnalogHat(LeftHatY), drivespeed2);
               else
                 mixBHD(myPS3->getAnalogHat(LeftHatX), myPS3->getAnalogHat(LeftHatY), drivespeed1);
               //now we've got values for leftFoot and rightFoot, output those somehow...
               //MIGHT NEED TO MAP FROM -100 > 100 to 0 > 255
-              FootMotorLeft.setSpeed(leftFoot);
-              FootMotorRight.setSpeed(rightFoot);
+              FootMotorLeft.setSpeed(leftFoot); //0 (stop) - 255 (full speed)
+              FootMotorRight.setSpeed(rightFoot); //0 (stop) - 255 (full speed)
             #endif
             previousFootMillis = currentMillis;
             return true; //we sent a foot command   

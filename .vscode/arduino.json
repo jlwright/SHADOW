@@ -1,6 +1,6 @@
 {
     "board": "arduino:avr:megaADK",
-    "sketch": "SHADOW.ino",
+    "sketch": "Shadow.ino",
     "programmer": "arduinoisp",
-    "port": "COM5"
+    "port": "COM13"
 }
