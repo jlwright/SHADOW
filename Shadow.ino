@@ -345,6 +345,19 @@ unsigned long domeStartTurnTime = 0;  // millis() when next turn should start
 int domeStatus = 0;  // 0 = stopped, 1 = prepare to turn, 2 = turning
 unsigned long automateMillis = 0;
 
+enum DomeCommands { // all possible dome commands
+  PERISCOPE,
+  LIFEFORMSCANNER,
+  ZAPPER,
+  BADMOTIVATOR,
+  LIGHTSABER,
+  OVERLOAD,
+  PANELWAVE,
+  PANELDANCE,
+  TOGGLEMAGICPANEL,
+  TOGGLEHOLOS
+};
+
 byte action = 0;
 unsigned long DriveMillis = 0;
 
@@ -439,26 +452,6 @@ void setup() {
     closeUtilArm(UTIL_ARM_BOTTOM);  
 }
 
-boolean readUSB() {
-    //The more devices we have connected to the USB or BlueTooth, the more often Usb.Task need to be called to eliminate latency.
-    Usb.Task();
-    if (PS3Nav->PS3NavigationConnected ) Usb.Task();
-    if (PS3Nav2->PS3NavigationConnected ) Usb.Task();
-    if ( criticalFaultDetect() ) {
-      //We have a fault condition that we want to ensure that we do NOT process any controller data!!!
-      Serial.println("criticalFaultDetect in left PS3Nav");
-      flushAndroidTerminal();
-      return false;
-    }
-	//Fix backported from Shadow_MD to fix "Dome Twitch"
-    if (criticalFaultDetectNav2()) { 
-      //We have a fault condition that we want to ensure that we do NOT process any controller data!!!
-      Serial.println("criticalFaultDetect in right PS3Nav");
-      return false;
-    }
-    return true;
-}
-
 void loop() {
     initAndroidTerminal();
     
@@ -481,12 +474,67 @@ void loop() {
     }
     automateDome();
     domeDrive();
+    domeCommand();
     utilityArms();
     holoprojector();
     toggleSettings();
     soundControl();
     // flashCoinSlotLEDs();
     flushAndroidTerminal();
+}
+
+void initAndroidTerminal() {
+  #ifdef BLUETOOTH_SERIAL
+  //Setup for Bluetooth Serial Monitoring
+  if (SerialBT.connected) {
+      if (firstMessage) {
+          firstMessage = false;
+          SerialBT.println(F("Hello from S.H.A.D.O.W.")); // Send welcome message
+      }
+      //TODO:  Process input from the SerialBT
+      //if (SerialBT.available())
+      //    Serial.write(SerialBT.read());
+  } else {
+      firstMessage = true;
+  }
+  #endif
+}
+
+void flushAndroidTerminal() {
+  if (output != "") {
+    if (Serial) Serial.println(output);
+    #ifdef BLUETOOTH_SERIAL
+      if (SerialBT.connected)
+        SerialBT.println(output);
+      SerialBT.send();
+    #endif
+    output = ""; // Reset output string
+  }
+}
+
+#pragma region ControllerFunctions
+// =======================================================================================
+// //////////////////////////Process PS3 Controller Fault Detection///////////////////////
+// =======================================================================================
+//TODO:  boolean criticalFaultDetect(PS3BT* myPS3 = PS3Nav, int controllerNumber = 1)
+boolean readUSB() {
+    //The more devices we have connected to the USB or BlueTooth, the more often Usb.Task need to be called to eliminate latency.
+    Usb.Task();
+    if (PS3Nav->PS3NavigationConnected ) Usb.Task();
+    if (PS3Nav2->PS3NavigationConnected ) Usb.Task();
+    if (criticalFaultDetect(PS3Nav, 1)) {
+      //We have a fault condition that we want to ensure that we do NOT process any controller data!!!
+      // Serial.println("criticalFaultDetect in left PS3Nav");
+      flushAndroidTerminal();
+      return false;
+    }
+	//Fix backported from Shadow_MD to fix "Dome Twitch"
+    if (criticalFaultDetect(PS3Nav2, 2)) { 
+      //We have a fault condition that we want to ensure that we do NOT process any controller data!!!
+      Serial.println("criticalFaultDetect in right PS3Nav");
+      return false;
+    }
+    return true;
 }
 
 void onInitPS3()
@@ -563,349 +611,215 @@ void swapPS3NavControllers()
     PS3Nav2->attachOnInit(onInitPS3Nav2); 
 }
 
-void initAndroidTerminal()
-{
-    #ifdef BLUETOOTH_SERIAL
-    //Setup for Bluetooth Serial Monitoring
-    if (SerialBT.connected)
-    {
-        if (firstMessage)
-        {
-            firstMessage = false;
-            SerialBT.println(F("Hello from S.H.A.D.O.W.")); // Send welcome message
-        }
-        //TODO:  Process input from the SerialBT
-        //if (SerialBT.available())
-        //    Serial.write(SerialBT.read());
-    }
-    else
-    {
-        firstMessage = true;
-    }
-    #endif
-}
-
-void flushAndroidTerminal()
-{
-    if (output != "")
-    {
-        if (Serial) Serial.println(output);
-        #ifdef BLUETOOTH_SERIAL
-        if (SerialBT.connected)
-            SerialBT.println(output);
-            SerialBT.send();
-        #endif
-        output = ""; // Reset output string
-    }
-}
-
-void automateDome()
-{
-    //automate dome movement
-    if (isAutomateDomeOn)
-    {
-      long rndNum;
-      int domeSpeed;
-      if (domeStatus == 0)  // Dome is currently stopped - prepare for a future turn
-        {
-        if (domeTargetPosition == 0)  // Dome is currently in the home position - prepare to turn away
-        {
-          domeStartTurnTime = millis() + (random(3, 10) * 1000);
-          rndNum = random(5,354);
-          domeTargetPosition = rndNum;  // set the target position to a random degree of a 360 circle - shaving off the first and last 5 degrees
-          
-          if (domeTargetPosition < 180)  // Turn the dome in the positive direction
-          {
-            domeTurnDirection = 1;
-            domeStopTurnTime = domeStartTurnTime + ((domeTargetPosition / 360) * time360DomeTurnRight);
-        }
-          else  // Turn the dome in the negative direction
-        {
-            domeTurnDirection = -1;
-            domeStopTurnTime = domeStartTurnTime + (((360 - domeTargetPosition) / 360) * time360DomeTurnLeft);
-          }
-        }
-        else  // Dome is not in the home position - send it back to home
-        {
-          domeStartTurnTime = millis() + (random(3, 10) * 1000);
-          
-          if (domeTargetPosition < 180)
-                {
-            domeTurnDirection = -1;
-            domeStopTurnTime = domeStartTurnTime + ((domeTargetPosition / 360) * time360DomeTurnLeft);
-                }
-                else
-                {
-            domeTurnDirection = 1;
-            domeStopTurnTime = domeStartTurnTime + (((360 - domeTargetPosition) / 360) * time360DomeTurnRight);
-                }
-          
-          domeTargetPosition = 0;
-        
-            }
-        
-        domeStatus = 1;  // Set dome status to preparing for a future turn
-         
-        #ifdef SHADOW_DEBUG
-          output += "Dome Automation: Initial Turn Set\r\n";
-          output +=  "Current Time: ";
-          output +=  millis();
-          output += "\r\n Next Start Time: ";
-          output += domeStartTurnTime;
-          output += "\r\n";
-          output += "Next Stop Time: ";
-          output += domeStopTurnTime;
-          output += "\r\n";          
-          output += "Dome Target Position: ";
-          output += domeTargetPosition;
-          output += "\r\n";          
-        #endif
-        }
-      
-      if (domeStatus == 1)  // Dome is prepared for a future move - start the turn when ready
-      {
-        if (domeStartTurnTime < millis())
-        {
-          domeStatus = 2; 
-  
-          #ifdef SHADOW_DEBUG
-            output += "Dome Automation: Ready To Start Turn\r\n";
-          #endif
-    }
-}
-
-      if (domeStatus == 2) // Dome is now actively turning until it reaches its stop time
-      {
-        if (domeStopTurnTime > millis())
-        {
-          domeSpeed = domeAutoSpeed * domeTurnDirection;
-          SyR->motor(domeSpeed);
-          
-          #ifdef SHADOW_DEBUG
-            output += "Turning Now!!\r\n";
-          #endif
-        } 
-        else  // turn completed - stop the motor
-        {
-          domeStatus = 0;
-          SyR->stop();
-
-          #ifdef SHADOW_DEBUG
-            output += "STOP TURN!!\r\n";
-          #endif
-        }
-      }
-    }
-}
-
-void sendDataToDomeBoard(int cmdNo) {
-  executingCommand = true;
-  String command = "";
-  switch (cmdNo) {
-    case 0:
-      command = "CMD:PERISCOPE";
+boolean criticalFaultDetect(PS3BT* myPS3, int controllerNumber) {
+  switch(controllerNumber) {
     case 1:
-      command = "CMD:LIFEFORMSCANNER";
-    case 2:
-      command = "CMD:ZAPPER";
-    case 3:
-      command = "CMD:BADMOTIVATOR";
-    case 4:
-      command = "CMD:LIGHTSABER";
-    case 5:
-      command = "CMD:OVERLOAD";
-    case 6:
-      command = "CMD:PANELWAVE";
-    case 7:
-      command = "CMD:PANELDANCE";
-    case 8:
-      command = "CMD:TOGGLEMAGICPANEL";
-    case 9:
-      command = "CMD:TOGGLEHOLOS";
-    case 10:
-      command = "CMD:TOGGLEHOLOAUTOMOVE";
-    default:
-      Serial.println("This is not a dome command");
-      executingCommand = false;
-      return;
-  }
-
-  Serial.println(command);
-  printAck(command);
-  executingCommand = false;
-}
-
-void printAck(String command) {
-  Serial.print("\r\n*** ");
-  Serial.print(command);
-  Serial.println(" sent to Dome board\r\n");  //print ACK to serial
-}
-
-#pragma region ControllerFaultDetection
-// =======================================================================================
-// //////////////////////////Process PS3 Controller Fault Detection///////////////////////
-// =======================================================================================
-//TODO:  boolean criticalFaultDetect(PS3BT* myPS3 = PS3Nav, int controllerNumber = 1)
-boolean criticalFaultDetect()
-{
-    if (PS3Nav->PS3NavigationConnected || PS3Nav->PS3Connected)
-    {
+      if (PS3Nav->PS3NavigationConnected || PS3Nav->PS3Connected) {
+        Serial.println("criticalFaultDetect in left PS3Nav controller");
+      
         lastMsgTime = PS3Nav->getLastMessageTime();
         currentTime = millis();
-        if ( currentTime >= lastMsgTime)
-        {
+        if (currentTime >= lastMsgTime) {
           msgLagTime = currentTime - lastMsgTime;
-        } else
-        {
-             #ifdef SHADOW_DEBUG
-               output += "Waiting for PS3Nav Controller Data\r\n";
-             #endif
-             badPS3Data++;
-             msgLagTime = 0;
+        } else {
+          #ifdef SHADOW_DEBUG
+            output += "Waiting for PS3Nav Controller Data\r\n";
+          #endif
+          badPS3Data++;
+          msgLagTime = 0;
         }
         
-        if (msgLagTime > 100 && !isFootMotorStopped)
-        {
-            #ifdef SHADOW_DEBUG
-              output += "It has been 100ms since we heard from the PS3 Controller\r\n";
-              output += "Shut downing motors, and watching for a new PS3 message\r\n";
-            #endif
-            stopFeet();
-            SyR->stop();
-            isFootMotorStopped = true;
-            return true;
+        if (msgLagTime > 100 && !isFootMotorStopped) {
+          #ifdef SHADOW_DEBUG
+            output += "It has been 100ms since we heard from the PS3 Controller\r\n";
+            output += "Shut downing motors, and watching for a new PS3 message\r\n";
+          #endif
+          stopFeet();
+          SyR->stop();
+          isFootMotorStopped = true;
+          return true;
         }
-        if ( msgLagTime > 30000 )
-        {
-            #ifdef SHADOW_DEBUG
-              output += "It has been 30s since we heard from the PS3 Controller\r\n";
-              output += "msgLagTime:";
-              output += msgLagTime;
-              output += "  lastMsgTime:";
-              output += lastMsgTime;
-              output += "  millis:";
-              output += millis();            
-              output += "\r\nDisconnecting the controller.\r\n";
-            #endif
-            PS3Nav->disconnect();
+        if (msgLagTime > 30000) {
+          #ifdef SHADOW_DEBUG
+            output += "It has been 30s since we heard from the PS3 Controller\r\n";
+            output += "msgLagTime:";
+            output += msgLagTime;
+            output += "  lastMsgTime:";
+            output += lastMsgTime;
+            output += "  millis:";
+            output += millis();            
+            output += "\r\nDisconnecting the controller.\r\n";
+          #endif
+          PS3Nav->disconnect();
         }
 
         //Check PS3 Signal Data
-        if(!PS3Nav->getStatus(Plugged) && !PS3Nav->getStatus(Unplugged))
-        {
-            // We don't have good data from the controller.
-            //Wait 10ms, Update USB, and try again
-            delay(10);
-            Usb.Task();
-            if(!PS3Nav->getStatus(Plugged) && !PS3Nav->getStatus(Unplugged))
-            {
-                badPS3Data++;
-                #ifdef SHADOW_DEBUG
-                    output += "\r\nInvalid data from PS3 Controller.";
-                #endif
-                return true;
-            }
-        }
-        else if (badPS3Data > 0)
-        {
-            //output += "\r\nPS3 Controller  - Recovered from noisy connection after: ";
-            //output += badPS3Data;
-            badPS3Data = 0;
-        }
-        if ( badPS3Data > 10 )
-        {
+        if(!PS3Nav->getStatus(Plugged) && !PS3Nav->getStatus(Unplugged)) {
+          // We don't have good data from the controller. Wait 10ms, Update USB, and try again
+          delay(10);
+          Usb.Task();
+          if(!PS3Nav->getStatus(Plugged) && !PS3Nav->getStatus(Unplugged)) {
+            badPS3Data++;
             #ifdef SHADOW_DEBUG
-                output += "Too much bad data coming from the PS3 Controller\r\n";
-                output += "Disconnecting the controller.\r\n";
+              output += "\r\nInvalid data from PS3 Controller.";
             #endif
-            PS3Nav->disconnect();
+            return true;
+          }
+        } else if (badPS3Data > 0) {
+          //output += "\r\nPS3 Controller  - Recovered from noisy connection after: ";
+          //output += badPS3Data;
+          badPS3Data = 0;
         }
-    }
-    else if (!isFootMotorStopped)
-    {
+        if (badPS3Data > 10) {
+          #ifdef SHADOW_DEBUG
+            output += "Too much bad data coming from the PS3 Controller\r\n";
+            output += "Disconnecting the controller.\r\n";
+          #endif
+          PS3Nav->disconnect();
+        }
+      } else if (!isFootMotorStopped) {
         #ifdef SHADOW_DEBUG      
-            output += "No Connected Controllers were found\r\n";
-            output += "Shuting downing motors, and watching for a new PS3 message\r\n";
+          output += "No Connected Controllers were found\r\n";
+          output += "Shuting downing motors, and watching for a new PS3 message\r\n";
         #endif
         stopFeet();
         SyR->stop();
         isFootMotorStopped = true;
         return true;
-    }
-    return false;
+      }
+      return false;
+      break;
+    case 2:
+      if (PS3Nav2->PS3NavigationConnected || PS3Nav2->PS3Connected) {
+        Serial.println("criticalFaultDetect in right PS3Nav controller");
+        lastMsgTime = PS3Nav2->getLastMessageTime();
+        currentTime = millis();
+        
+        if (currentTime >= lastMsgTime) {
+          msgLagTime = currentTime - lastMsgTime;
+        } else {
+          #ifdef SHADOW_DEBUG
+            output += "Waiting for PS3Nav Secondary Controller Data\r\n";
+          #endif
+          badPS3Data++;
+          msgLagTime = 0;
+        }
+        if (msgLagTime > 10000) {
+          #ifdef SHADOW_DEBUG
+            output += "It has been 10s since we heard from the PS3 secondary Controller\r\n";
+            output += "msgLagTime:";
+            output += msgLagTime;
+            output += " lastMsgTime:";
+            output += lastMsgTime;
+            output += " millis:";
+            output += millis(); 
+            output += "\r\nDisconnecting the secondary controller.\r\n";
+          #endif
+          SyR->stop();
+          PS3Nav2->disconnect();
+          return true;
+        }
+        
+        //Check PS3 Signal Data
+        if(!PS3Nav2->getStatus(Plugged) && !PS3Nav2->getStatus(Unplugged)) {
+          // We don't have good data from the controller.
+          //Wait 15ms, Update USB, and try again
+          delay(15);
+          Usb.Task();
+          if(!PS3Nav2->getStatus(Plugged) && !PS3Nav2->getStatus(Unplugged)) {
+            badPS3Data++;
+            #ifdef SHADOW_DEBUG
+              output += "\r\nInvalid data from PS3 Secondary Controller.";
+            #endif
+            return true;
+          }
+        } else if (badPS3Data > 0) {
+          badPS3Data = 0;
+        }
+      
+        if (badPS3Data > 10){
+          #ifdef SHADOW_DEBUG
+            output += "Too much bad data coming from the PS3 Secondary Controller\r\n";
+            output += "Disconnecting the controller.\r\n";
+          #endif
+          SyR->stop();
+          PS3Nav2->disconnect();
+          return true;
+        }
+      }
+      return false;
+      break;
+  }
 }
 
-boolean criticalFaultDetectNav2()
-{
-  if (PS3Nav2->PS3NavigationConnected || PS3Nav2->PS3Connected)
-  {
-    lastMsgTime = PS3Nav2->getLastMessageTime();
-    currentTime = millis();
-    
-    if ( currentTime >= lastMsgTime)
-    {
-      msgLagTime = currentTime - lastMsgTime;
-    } 
-    else
-    {
-      #ifdef SHADOW_DEBUG
-        output += "Waiting for PS3Nav Secondary Controller Data\r\n";
-      #endif
-      badPS3Data++;
-      msgLagTime = 0;
-    }
-    
-    if ( msgLagTime > 10000 )
-    {
-      #ifdef SHADOW_DEBUG
-        output += "It has been 10s since we heard from the PS3 secondary Controller\r\n";
-        output += "msgLagTime:";
-        output += msgLagTime;
-        output += " lastMsgTime:";
-        output += lastMsgTime;
-        output += " millis:";
-        output += millis(); 
-        output += "\r\nDisconnecting the secondary controller.\r\n";
-      #endif
-      SyR->stop();
-      PS3Nav2->disconnect();
-      return true;
-    }
-    
-    //Check PS3 Signal Data
-    if(!PS3Nav2->getStatus(Plugged) && !PS3Nav2->getStatus(Unplugged))
-    {
-      // We don't have good data from the controller.
-      //Wait 15ms, Update USB, and try again
-      delay(15);
-      Usb.Task();
-      if(!PS3Nav2->getStatus(Plugged) && !PS3Nav2->getStatus(Unplugged))
-      {
-        badPS3Data++;
-        #ifdef SHADOW_DEBUG
-          output += "\r\nInvalid data from PS3 Secondary Controller.";
-        #endif
-        return true;
-      }
-    }
-    else if (badPS3Data > 0)
-    {
-      badPS3Data = 0;
-    }
-  
-    if ( badPS3Data > 10 )
-    {
-      #ifdef SHADOW_DEBUG
-        output += "Too much bad data coming from the PS3 Secondary Controller\r\n";
-        output += "Disconnecting the controller.\r\n";
-      #endif
-      SyR->stop();
-      PS3Nav2->disconnect();
-      return true;
-    }
-  }
-  return false;
-}
+// boolean criticalFaultDetectNav2()
+// {
+//   if (PS3Nav2->PS3NavigationConnected || PS3Nav2->PS3Connected)
+//   {
+//     lastMsgTime = PS3Nav2->getLastMessageTime();
+//     currentTime = millis();
+//     if ( currentTime >= lastMsgTime)
+//     {
+//       msgLagTime = currentTime - lastMsgTime;
+//     } 
+//     else
+//     {
+//       #ifdef SHADOW_DEBUG
+//         output += "Waiting for PS3Nav Secondary Controller Data\r\n";
+//       #endif
+//       badPS3Data++;
+//       msgLagTime = 0;
+//     }
+//     if ( msgLagTime > 10000 )
+//     {
+//       #ifdef SHADOW_DEBUG
+//         output += "It has been 10s since we heard from the PS3 secondary Controller\r\n";
+//         output += "msgLagTime:";
+//         output += msgLagTime;
+//         output += " lastMsgTime:";
+//         output += lastMsgTime;
+//         output += " millis:";
+//         output += millis(); 
+//         output += "\r\nDisconnecting the secondary controller.\r\n";
+//       #endif
+//       SyR->stop();
+//       PS3Nav2->disconnect();
+//       return true;
+//     }
+//     //Check PS3 Signal Data
+//     if(!PS3Nav2->getStatus(Plugged) && !PS3Nav2->getStatus(Unplugged))
+//     {
+//       // We don't have good data from the controller.
+//       //Wait 15ms, Update USB, and try again
+//       delay(15);
+//       Usb.Task();
+//       if(!PS3Nav2->getStatus(Plugged) && !PS3Nav2->getStatus(Unplugged))
+//       {
+//         badPS3Data++;
+//         #ifdef SHADOW_DEBUG
+//           output += "\r\nInvalid data from PS3 Secondary Controller.";
+//         #endif
+//         return true;
+//       }
+//     }
+//     else if (badPS3Data > 0)
+//     {
+//       badPS3Data = 0;
+//     }
+//     if ( badPS3Data > 10 )
+//     {
+//       #ifdef SHADOW_DEBUG
+//         output += "Too much bad data coming from the PS3 Secondary Controller\r\n";
+//         output += "Disconnecting the controller.\r\n";
+//       #endif
+//       SyR->stop();
+//       PS3Nav2->disconnect();
+//       return true;
+//     }
+//   }
+//   return false;
+// }
+
 // =======================================================================================
 // //////////////////////////END of PS3 Controller Fault Detection////////////////////////
 // =======================================================================================
@@ -1341,6 +1255,201 @@ void rotateDome(int domeRotationSpeed, String mesg) {
       SyR->motor(domeRotationSpeed);
     }
 }
+
+void sendSerialDataToDome(int cmdNo) {
+  executingCommand = true;
+  String serialCommand = "";
+  switch (cmdNo) {
+    case PERISCOPE:
+      serialCommand = "CMD:PERISCOPE";
+    case LIFEFORMSCANNER:
+      serialCommand = "CMD:LIFEFORMSCANNER";
+    case ZAPPER:
+      serialCommand = "CMD:ZAPPER";
+    case BADMOTIVATOR:
+      serialCommand = "CMD:BADMOTIVATOR";
+    case LIGHTSABER:
+      serialCommand = "CMD:LIGHTSABER";
+    case OVERLOAD:
+      serialCommand = "CMD:OVERLOAD";
+    case PANELWAVE:
+      serialCommand = "CMD:PANELWAVE";
+    case PANELDANCE:
+      serialCommand = "CMD:PANELDANCE";
+    case TOGGLEMAGICPANEL:
+      serialCommand = "CMD:TOGGLEMAGICPANEL";
+    case TOGGLEHOLOS:
+      serialCommand = "CMD:TOGGLEHOLOS";
+    default:
+      Serial.println("This is not a dome command");
+      executingCommand = false;
+      return;
+  }
+  Serial.println(serialCommand);
+  printAck(serialCommand);
+  executingCommand = false;
+}
+
+void ps3DomeCommand(PS3BT* myPS3, int controllerNumber) {
+  switch (controllerNumber) {
+      case 1: // no dome commands from controller 1 at this time
+        // if (!(myPS3->getButtonPress(L1) || myPS3->getButtonPress(L2) || myPS3->getButtonPress(PS))){
+        //   if (myPS3->getButtonClick(UP))
+        //     processSoundCommand('1');
+        //   else if (myPS3->getButtonClick(RIGHT))
+        //     processSoundCommand('2');
+        //   else if (myPS3->getButtonClick(DOWN))
+        //     processSoundCommand('3');
+        //   else if (myPS3->getButtonClick(LEFT))
+        //     processSoundCommand('4');
+        // } else if (myPS3->getButtonPress(L1)) {
+        //   if (myPS3->getButtonClick(UP))
+        //     processSoundCommand('5');
+        //   else if (myPS3->getButtonClick(RIGHT))
+        //     processSoundCommand('6');
+        //   else if (myPS3->getButtonClick(DOWN))
+        //     processSoundCommand('7');
+        //   else if (myPS3->getButtonClick(LEFT))
+        //     processSoundCommand('8');
+        // } else if (myPS3->getButtonPress(L2)) {
+        //   if (myPS3->getButtonClick(UP))
+        //     processSoundCommand('9');
+        //   else if (myPS3->getButtonClick(DOWN))
+        //     processSoundCommand('10');
+        //   else if (myPS3->getButtonClick(LEFT))
+        //     processSoundCommand('11');
+        //   else if (myPS3->getButtonClick(RIGHT))
+        //     processSoundCommand('12');
+        // }
+        // break;
+      case 2:
+        if (!(myPS3->getButtonPress(L1) || myPS3->getButtonPress(L2) || myPS3->getButtonPress(PS))) {
+          if (myPS3->getButtonClick(UP))
+            sendSerialDataToDome(PERISCOPE);
+          else if (myPS3->getButtonClick(RIGHT))
+            sendSerialDataToDome(LIFEFORMSCANNER);
+          else if (myPS3->getButtonClick(DOWN))
+            sendSerialDataToDome(ZAPPER);
+          else if (myPS3->getButtonClick(LEFT))
+            sendSerialDataToDome(BADMOTIVATOR);
+        } else if (myPS3->getButtonPress(L1)) {
+          if (myPS3->getButtonClick(UP))
+            sendSerialDataToDome(LIGHTSABER);
+          else if (myPS3->getButtonClick(RIGHT))
+            sendSerialDataToDome(OVERLOAD);
+          else if (myPS3->getButtonClick(DOWN))
+            sendSerialDataToDome(PANELWAVE);
+          else if (myPS3->getButtonClick(LEFT))
+            sendSerialDataToDome(PANELDANCE);
+        } else if (myPS3->getButtonPress(L2)) {
+          if (myPS3->getButtonClick(UP))
+            sendSerialDataToDome(TOGGLEMAGICPANEL);
+          else if (myPS3->getButtonClick(DOWN))
+            sendSerialDataToDome(TOGGLEHOLOS);
+          else if (myPS3->getButtonClick(LEFT))
+            sendSerialDataToDome(10);
+          else if (myPS3->getButtonClick(RIGHT))
+            sendSerialDataToDome(11);
+        }
+        break;
+    }
+}
+
+void domeCommand() {
+  if ((millis() - previousDomeMillis) < (2*serialLatency)) return; // change delay time?
+
+  // give dome command control to PS3Nav2 if it is connected
+  if (PS3Nav2->PS3NavigationConnected) {
+    ps3DomeCommand(PS3Nav2,2);
+  } else if (PS3Nav->PS3NavigationConnected) { // TODO: implement dome commands with controller 1?
+    // ps3DomeCommand(PS3Nav,1);
+  }
+}
+
+void printAck(String serialCommand) {
+  Serial.print("\r\n*** ");
+  Serial.print(serialCommand);
+  Serial.println(" sent to Dome board\r\n");  //print ACK to serial
+}
+
+void automateDome() {
+  //automate dome movement
+  if (isAutomateDomeOn) {
+    long rndNum;
+    int domeSpeed;
+    if (domeStatus == 0) { // Dome is currently stopped - prepare for a future turn
+      if (domeTargetPosition == 0) { // Dome is currently in the home position - prepare to turn away
+        domeStartTurnTime = millis() + (random(3, 10) * 1000);
+        rndNum = random(5,354);
+        domeTargetPosition = rndNum;  // set the target position to a random degree of a 360 circle - shaving off the first and last 5 degrees
+        
+        if (domeTargetPosition < 180) { // Turn the dome in the positive direction
+          domeTurnDirection = 1;
+          domeStopTurnTime = domeStartTurnTime + ((domeTargetPosition / 360) * time360DomeTurnRight);
+        } else { // Turn the dome in the negative direction
+          domeTurnDirection = -1;
+          domeStopTurnTime = domeStartTurnTime + (((360 - domeTargetPosition) / 360) * time360DomeTurnLeft);
+        }
+      } else { // Dome is not in the home position - send it back to home
+        domeStartTurnTime = millis() + (random(3, 10) * 1000);
+
+        if (domeTargetPosition < 180) {
+          domeTurnDirection = -1;
+          domeStopTurnTime = domeStartTurnTime + ((domeTargetPosition / 360) * time360DomeTurnLeft);
+        } else {
+          domeTurnDirection = 1;
+          domeStopTurnTime = domeStartTurnTime + (((360 - domeTargetPosition) / 360) * time360DomeTurnRight);
+        }
+        domeTargetPosition = 0;
+      }
+      
+      domeStatus = 1;  // Set dome status to preparing for a future turn
+        
+      #ifdef SHADOW_DEBUG
+        output += "Dome Automation: Initial Turn Set\r\n";
+        output +=  "Current Time: ";
+        output +=  millis();
+        output += "\r\n Next Start Time: ";
+        output += domeStartTurnTime;
+        output += "\r\n";
+        output += "Next Stop Time: ";
+        output += domeStopTurnTime;
+        output += "\r\n";          
+        output += "Dome Target Position: ";
+        output += domeTargetPosition;
+        output += "\r\n";          
+      #endif
+    }
+    
+    if (domeStatus == 1) { // Dome is prepared for a future move - start the turn when ready
+      if (domeStartTurnTime < millis()) {
+        domeStatus = 2; 
+
+        #ifdef SHADOW_DEBUG
+          output += "Dome Automation: Ready To Start Turn\r\n";
+        #endif
+      }
+    }
+
+    if (domeStatus == 2) { // Dome is now actively turning until it reaches its stop time
+      if (domeStopTurnTime > millis()) {
+        domeSpeed = domeAutoSpeed * domeTurnDirection;
+        SyR->motor(domeSpeed);
+        
+        #ifdef SHADOW_DEBUG
+          output += "Turning Now!!\r\n";
+        #endif
+      } else { // turn completed - stop the motor
+        domeStatus = 0;
+        SyR->stop();
+
+        #ifdef SHADOW_DEBUG
+          output += "STOP TURN!!\r\n";
+        #endif
+      }
+    }
+  }
+}
 // =======================================================================================
 // //////////////////////////END: Dome Functions//////////////////////////////////////////
 // =======================================================================================
@@ -1536,8 +1645,8 @@ void ps3utilityArms(PS3BT* myPS3, int controllerNumber) {
           #ifdef SHADOW_DEBUG
             output += "Opening utility arms\r\n";
           #endif
-          openUtilArm(UTIL_ARM_TOP, utilArmOpenPos);
-          openUtilArm(UTIL_ARM_BOTTOM, utilArmOpenPos);
+          moveUtilArm(UTIL_ARM_TOP, utilArmOpenPos);
+          moveUtilArm(UTIL_ARM_BOTTOM, utilArmOpenPos);
         } else if(myPS3->getButtonClick(CIRCLE)) {
           #ifdef SHADOW_DEBUG
             output += "Closing utility arms\r\n";
@@ -1570,11 +1679,11 @@ void utilityArms() {
   // if (PS3Nav2->PS3NavigationConnected) ps3utilityArms(PS3Nav2,2);
 }
 
-void openUtilArm(int arm, int position = utilArmOpenPos) {
-    //When passed a position - this can "partially" open the arms.
-    //Great for more interaction
-    moveUtilArm(arm, utilArmOpenPos);
-}
+// void openUtilArm(int arm, int position = utilArmOpenPos) {
+//     //When passed a position - this can "partially" open the arms.
+//     //Great for more interaction
+//     moveUtilArm(arm, position);
+// }
 
 void closeUtilArm(int arm) {
     moveUtilArm(arm, utilArmClosedPos);
@@ -1584,16 +1693,16 @@ void waveUtilArm(int arm) {
   switch (arm) {
     case UTIL_ARM_TOP:
       if(isUtilArmTopOpen == false) {
-        openUtilArm(UTIL_ARM_TOP);
+        moveUtilArm(UTIL_ARM_TOP, utilArmOpenPos);
       } else {
-        closeUtilArm(UTIL_ARM_TOP);
+        moveUtilArm(UTIL_ARM_TOP, utilArmClosedPos);
       }
       break;
     case UTIL_ARM_BOTTOM:  
       if(isUtilArmBottomOpen == false) {
-        openUtilArm(UTIL_ARM_BOTTOM);
+        moveUtilArm(UTIL_ARM_BOTTOM, utilArmOpenPos);
       } else {
-        closeUtilArm(UTIL_ARM_BOTTOM);
+        moveUtilArm(UTIL_ARM_BOTTOM, utilArmClosedPos);
       }
       break;
   }

@@ -1,5 +1,5 @@
-#ifndef _domecommandenums_h
-#define _domecommandenums_h
+#ifndef domecommandenums_h
+#define domecommandenums_h
 
 enum DomeCommands { // all possible dome commands
   PERISCOPE,
@@ -11,8 +11,7 @@ enum DomeCommands { // all possible dome commands
   PANELWAVE,
   PANELDANCE,
   TOGGLEMAGICPANEL,
-  TOGGLEHOLOS,
-  TOGGLEHOLOAUTOMOVE
+  TOGGLEHOLOS
 };
 
 #endif
