@@ -42,8 +42,8 @@
 //            http://www.adafruit.com/product/815
 //            This can drive 6 servos, and 3 LEDs.  PWM will allow for LED brightness "flicker"
 //  
-//   Sabertooth (Foot Drive):
-//         Set Sabertooth 2x32 or 2x25 Dip Switches: 1 and 2 Down, All Others Up
+//   Cytron SmartDriveDuo-30 (Foot Drive):
+//         Set Cytron Dip Switches: 10110100
 //
 //   SyRen 10 Dome Drive:
 //         For SyRen packetized Serial Set Switches: 1, 2 and 4 Down, All Others Up
@@ -137,7 +137,7 @@ int motorControllerBaudRate = 9600; // Set the baud rate for the Syren motor con
 //#define SOUND_MP3TRIGGER   //Code Tested by Dave C. and Marty M.
 //#define SOUND_ROGUE_RMP3   //Support coming soon
 //#define SOUND_RASBERRYPI   //Support coming soon
-//#define EXTRA_SOUNDS
+#define EXTRA_SOUNDS
 
 // ---------------------------------------------------------------------------------------
 //                          Dome Control System
@@ -155,8 +155,8 @@ int motorControllerBaudRate = 9600; // Set the baud rate for the Syren motor con
 //Secondary (right) PS3Nav MAC: 00:07:04:05:04:EA
 
 //Primary Controller bound to TRENDnet TBW-107UB 
-String PS3MoveNavigatonPrimaryMAC = "04:76:6E:E9:1B:0C"; //left hand controller
-String PS3MoveNavigatonSecondaryMAC = "00:07:04:05:04:EA"; //right hand controller
+String PS3MoveNavigatonPrimaryMAC = "04:76:6E:E9:1B:00"; //left hand controller
+String PS3MoveNavigatonSecondaryMAC = "00:07:04:05:04:00"; //right hand controller
 
 #define FOOT_CONTROLLER 3 //0 for Sabertooth Serial or 
                           //1 for individual R/C output (for Q85/NEO motors with 1 controller for each foot) or  
@@ -332,7 +332,8 @@ boolean isPS3NavigatonInitialized = false;
 boolean isSecondaryPS3NavigatonInitialized = false;
 
 byte vol = 0; // 0 = full volume, 255 off
-boolean isStickEnabled = true;
+boolean isDriveStickEnabled = true;
+boolean isDomeStickEnabled = true;
 
 // Dome Automation Variables
 boolean domeAutomation = false;
@@ -471,18 +472,13 @@ void loop() {
       return;
     }
 
-    // for (int i = 0; i <= 10; i++) {
-    //   sendDataToDomeBoard(i);
-    //   delay(1000);
-    // }
-
     //LOOP through functions from highest to lowest priority.
     footMotorDrive();
-    // if ( !readUSB() )
-    // {
-    //   //We have a fault condition that we want to ensure that we do NOT process any controller data!!!
-    //   return;
-    // }
+    if ( !readUSB() )
+    {
+      //We have a fault condition that we want to ensure that we do NOT process any controller data!!!
+      return;
+    }
     automateDome();
     domeDrive();
     utilityArms();
@@ -1068,7 +1064,7 @@ boolean ps3FootMotorDrive(PS3BT* myPS3 = PS3Nav) {
   int turnnum = 0;
 
   if (isPS3NavigatonInitialized) {
-      if (!isStickEnabled) {
+      if (!isDriveStickEnabled) {
             #ifdef SHADOW_VERBOSE
               if ( abs(myPS3->getAnalogHat(LeftHatY)-128) > joystickFootDeadZoneRange)
               {
@@ -1242,35 +1238,41 @@ void footMotorDrive() {
 // =======================================================================================
 // //////////////////////////Dome Functions///////////////////////////////////////////////
 // =======================================================================================
-int ps3DomeDrive(PS3BT* myPS3 = PS3Nav, int controllerNumber = 1)
+int ps3DomeDrive(PS3BT* myPS3, int controllerNumber)
 {
     int domeRotationSpeed = 0;
-    if (controllerNumber==1 && myPS3->getButtonPress(CROSS) && !(myPS3->getButtonPress(L1)) && !(myPS3->getButtonPress(L2)) && !(myPS3->getButtonPress(PS))  )
-    {
-      domeRotationSpeed = -75;
-    } else if (controllerNumber==1 && myPS3->getButtonPress(CIRCLE) && !(myPS3->getButtonPress(L1)) && !(myPS3->getButtonPress(L2)) && !(myPS3->getButtonPress(PS))  )
-    {
-      domeRotationSpeed = 75;
-    } else if ( (controllerNumber==1 && myPS3->getButtonPress(L1)) || ( controllerNumber==2 && !myPS3->getButtonPress(L1) && !myPS3->getButtonPress(L2) )  )
-    {
-        int joystickPosition = myPS3->getAnalogHat(LeftHatX);
-        domeRotationSpeed = (map(joystickPosition, 0, 255, -domespeed, domespeed));
-        if ( abs(joystickPosition-128) < joystickDomeDeadZoneRange ) 
-          domeRotationSpeed = 0;
-          
-		//TODO: DMB:  do we want to automatically disable dome automation?
-        /*        if (domeRotationSpeed != 0 && isAutomateDomeOn == true)  // Turn off dome automation if manually moved
-        {   
-            isAutomateDomeOn = false; 
-            domeStatus = 0;
-            domeTargetPosition = 0; 
-            
-            #ifdef SHADOW_DEBUG
-              output += "Dome Automation OFF\r\n";
-            #endif
-
+    switch (controllerNumber) {
+      case 1:
+        if (myPS3->getButtonPress(CROSS) && !(myPS3->getButtonPress(L1)) && 
+            !(myPS3->getButtonPress(L2)) && !(myPS3->getButtonPress(PS))) {
+          domeRotationSpeed = -75;
+        } else if (myPS3->getButtonPress(CIRCLE) && !(myPS3->getButtonPress(L1)) && 
+                  !(myPS3->getButtonPress(L2)) && !(myPS3->getButtonPress(PS))) {
+          domeRotationSpeed = 75;
         }
-		*/
+        break;
+      case 2:
+        if (!(myPS3->getButtonPress(L1)) && !(myPS3->getButtonPress(L2)) && !(myPS3->getButtonPress(PS))) {
+          int joystickPosition = myPS3->getAnalogHat(LeftHatX);
+          domeRotationSpeed = (map(joystickPosition, 0, 255, -domespeed, domespeed));
+          if ( abs(joystickPosition-128) < joystickDomeDeadZoneRange ) 
+            domeRotationSpeed = 0;
+            
+      //TODO: DMB:  do we want to automatically disable dome automation?
+          /*        if (domeRotationSpeed != 0 && isAutomateDomeOn == true)  // Turn off dome automation if manually moved
+          {   
+              isAutomateDomeOn = false; 
+              domeStatus = 0;
+              domeTargetPosition = 0; 
+              
+              #ifdef SHADOW_DEBUG
+                output += "Dome Automation OFF\r\n";
+              #endif
+
+          }
+      */
+        }
+        break;
     }
     return domeRotationSpeed;
 }
@@ -1280,23 +1282,31 @@ void domeDrive() {
   //This is intentionally set to double the rate of the Foot Motor Latency
   if ((millis() - previousDomeMillis) < (2*serialLatency) ) return;  
   
-  int domeRotationSpeed = 0;
-  int ps3NavControlSpeed = 0;
-  int ps3Nav2ControlSpeed = 0;
-  if (PS3Nav->PS3NavigationConnected) ps3NavControlSpeed = ps3DomeDrive(PS3Nav,1);
-  if (PS3Nav2->PS3NavigationConnected) ps3Nav2ControlSpeed = ps3DomeDrive(PS3Nav2,2);
+  int domeRotationSpeed = 0; // don't need separate speeds for each controller since we are passing controller number
+  // int ps3NavDomeSpeed = 0;
+  // int ps3Nav2ControlSpeed = 0;
+
+  // if (PS3Nav->PS3NavigationConnected) ps3NavControlSpeed = ps3DomeDrive(PS3Nav,1);
+  // if (PS3Nav2->PS3NavigationConnected) ps3Nav2ControlSpeed = ps3DomeDrive(PS3Nav2,2);
+  
+  // give dome control to PS3Nav2 if it is connected
+  if (PS3Nav2->PS3NavigationConnected) {
+    domeRotationSpeed = ps3DomeDrive(PS3Nav2,2);
+  } else if (PS3Nav->PS3NavigationConnected) {
+    domeRotationSpeed = ps3DomeDrive(PS3Nav,1);
+  }
 
   //In a two controller system, give dome priority to the secondary controller.
   //Only allow the "Primary" controller dome control if the Secondary is NOT spinnning it
   
-  if ( abs(ps3Nav2ControlSpeed) > 0 )
-  {
-    domeRotationSpeed = ps3Nav2ControlSpeed;
-  } else
-  {
-    domeRotationSpeed = ps3NavControlSpeed; 
+  // if (abs(ps3NavDomeSpeed) > 0) {
+  //   domeRotationSpeed = ps3NavDomeSpeed;
+  // } else {
+  //   domeRotationSpeed = ps3NavDomeSpeed; 
+  // }
+  if (abs(domeRotationSpeed) > 0) {
+    rotateDome(domeRotationSpeed,"Controller Move");
   }
-  rotateDome(domeRotationSpeed,"Controller Move");
 }  
 
 void rotateDome(int domeRotationSpeed, String mesg) {
@@ -1308,32 +1318,26 @@ void rotateDome(int domeRotationSpeed, String mesg) {
     // 4.) Reduce the time-out of the SyRen - just better for safety!
     
     currentMillis = millis();
-    if ( (!isDomeMotorStopped || domeRotationSpeed != 0) && ((currentMillis - previousDomeMillis) > (2*serialLatency) )  )
-    {
-      #ifdef SHADOW_VERBOSE      
-        output += "DEBUG:  Dome Rotation called by: ";
-        output += mesg;
-        if (domeRotationSpeed < 0)
-        {
-          output += "  Spinning Dome Left at speed: "; 
-        } else if (domeRotationSpeed > 0)
-        {
-          output += "  Spinning Dome Right at speed: "; 
-        } else
-        {
-          output += "  Stopping Dome Spin speed: "; 
-        }    
-        output += domeRotationSpeed; 
-        output += "\r\n";
-      #endif
-      if (domeRotationSpeed != 0)
-      {
+    if ((!isDomeMotorStopped || domeRotationSpeed != 0) && ((currentMillis - previousDomeMillis) > (2 * serialLatency))) {
+#ifdef SHADOW_VERBOSE
+      output += "DEBUG:  Dome Rotation called by: ";
+      output += mesg;
+      if (domeRotationSpeed < 0) {
+        output += "  Spinning Dome Left at speed: ";
+      } else if (domeRotationSpeed > 0) {
+        output += "  Spinning Dome Right at speed: ";
+      } else {
+        output += "  Stopping Dome Spin speed: ";
+      }
+      output += domeRotationSpeed;
+      output += "\r\n";
+#endif
+      if (domeRotationSpeed != 0) {
         isDomeMotorStopped = false;
-      } else
-      {
+      } else {
         isDomeMotorStopped = true;
       }
-      previousDomeMillis = currentMillis;      
+      previousDomeMillis = currentMillis;
       SyR->motor(domeRotationSpeed);
     }
 }
@@ -1346,51 +1350,119 @@ void rotateDome(int domeRotationSpeed, String mesg) {
 // =======================================================================================
 // //////////////////////////Settings Functions///////////////////////////////////////////
 // =======================================================================================
-void ps3ToggleSettings(PS3BT* myPS3 = PS3Nav) {
-    if(myPS3->getButtonPress(PS)&&myPS3->getButtonClick(L3)) {
-      //Quick Shutdown of PS3 Controller
-      output += "\r\nDisconnecting the controller.\r\n";
-      myPS3->disconnect();
-    }
-    // enable / disable Drive stick & play sound
-    if(myPS3->getButtonPress(PS)&&myPS3->getButtonClick(CROSS)) {
-        #ifdef SHADOW_DEBUG
-          output += "Disabling the DriveStick\r\n";
-        #endif
-        isStickEnabled = false;
-//        trigger.play(52);
-    }
-    if(myPS3->getButtonPress(PS)&&myPS3->getButtonClick(CIRCLE)) {
-        #ifdef SHADOW_DEBUG
-          output += "Enabling the DriveStick\r\n";
-        #endif
-        isStickEnabled = true;
-//        trigger.play(53);
-    }
+void ps3ToggleSettings(PS3BT* myPS3, int controllerNumber) {
+  if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(L3)) {
+    //Quick Shutdown of PS3 Controller
+    output += "\r\nDisconnecting the controller.\r\n";
+    myPS3->disconnect();
+  }
 
-////turn hp automation or automate on & off
-//    if(myPS3->getButtonPress(L1)&&myPS3->getButtonClick(CIRCLE))
-//    {
-//        #ifdef SHADOW_DEBUG
-//          output += "Enabling the Holo Automation\r\n";
-//        #endif
-//        //Turn On HP Automation
-//        domeData.hpa = 1;
-//        domeData.dsp = 100;
-//        ET.sendData();
-//    }
-//    if(myPS3->getButtonPress(L1)&&myPS3->getButtonClick(CROSS))
-//    {
-//        #ifdef SHADOW_DEBUG
-//          output += "Disabling the Holo Automation\r\n";
-//        #endif
-//        //Turn Off HP Automation
-//        domeData.hpa = 0;
-//        domeData.dsp = 100;
-//        ET.sendData();
-//    }
+  switch (controllerNumber) {
+    case 1:
+      // enable / disable Drive stick & play sound
+      if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(CROSS)) {
+        #ifdef SHADOW_DEBUG
+          output += "Disabling the Drive Stick\r\n";
+        #endif
+        isDriveStickEnabled = false;
+  //        trigger.play(52);
+      }
+      if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(CIRCLE)) {
+        #ifdef SHADOW_DEBUG
+          output += "Enabling the Drive Stick\r\n";
+        #endif
+        isDriveStickEnabled = true;
+  //        trigger.play(53);
+      }
+      if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(UP)) {
+        #ifdef SHADOW_DEBUG
+          output += "Volume up\r\n";
+        #endif
+        // raise volume of amp board
+  //        trigger.play(53);
+      }
+      if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(DOWN)) {
+        #ifdef SHADOW_DEBUG
+          output += "Volume down\r\n";
+        #endif
+        // lower volume of amp board
+  //        trigger.play(53);
+      }
+      if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(RIGHT)) {
+        #ifdef SHADOW_DEBUG
+          output += "Sound on\r\n";
+        #endif
+        // set volume to default level
+  //        trigger.play(53);
+      }
+      if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(LEFT)) {
+        #ifdef SHADOW_DEBUG
+          output += "Sound off\r\n";
+        #endif
+        // set volume to zero
+  //        trigger.play(53);
+      }
+      break;
+    case 2:
+      if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(CROSS)) {
+        #ifdef SHADOW_DEBUG
+          output += "Disabling the Dome Stick\r\n";
+        #endif
+        isDomeStickEnabled = false;
+  //        trigger.play(52);
+      }
+      if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(CIRCLE)) {
+        #ifdef SHADOW_DEBUG
+          output += "Enabling the Dome Stick\r\n";
+        #endif
+        isDomeStickEnabled = true;
+  //        trigger.play(53);
+      }
+      if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(UP)) {
+        #ifdef SHADOW_DEBUG
+          output += "Holo brightness up\r\n";
+        #endif
+        // increase brightness of holos
+  //        trigger.play(53);
+      }
+      if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(DOWN)) {
+        #ifdef SHADOW_DEBUG
+          output += "Holo brightness down\r\n";
+        #endif
+        // lower brightness of holos
+  //        trigger.play(53);
+      }
+      if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(RIGHT)) {
+        #ifdef SHADOW_DEBUG
+          output += "Holo auto movement on\r\n";
+        #endif
+        // enable holo auto movement
 
-    if(myPS3->getButtonPress(L2)&&myPS3->getButtonClick(CROSS)) {
+        // #ifdef SHADOW_DEBUG
+        //   output += "Enabling the Holo Automation\r\n";
+        // #endif
+        // // Turn On HP Automation
+        // domeData.hpa = 1;
+        // domeData.dsp = 100;
+        // ET.sendData();
+        // trigger.play(53);
+      }
+      if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(LEFT)) {
+        #ifdef SHADOW_DEBUG
+          output += "Holo auto movement off\r\n";
+        #endif
+        // disable holo auto movement
+
+        // #ifdef SHADOW_DEBUG
+        //   output += "Disabling the Holo Automation\r\n";
+        // #endif
+        // //Turn Off HP Automation
+        // domeData.hpa = 0;
+        // domeData.dsp = 100;
+        // ET.sendData();
+        // trigger.play(53);
+      }
+      if(myPS3->getButtonPress(L2)&&myPS3->getButtonClick(CROSS)) {
 	    if(isAutomateDomeOn) {
         #ifdef SHADOW_DEBUG
           output += "Disabling the Dome Automation\r\n";        
@@ -1410,6 +1482,8 @@ void ps3ToggleSettings(PS3BT* myPS3 = PS3Nav) {
         isAutomateDomeOn = true;
 //        trigger.play(65);
     }
+      break;
+  }
 
     /*
     ////Logic display brightness
@@ -1432,10 +1506,9 @@ void ps3ToggleSettings(PS3BT* myPS3 = PS3Nav) {
     */
 }
 
-void toggleSettings()
-{
-   if (PS3Nav->PS3NavigationConnected) ps3ToggleSettings(PS3Nav);
-   if (PS3Nav2->PS3NavigationConnected) ps3ToggleSettings(PS3Nav2);
+void toggleSettings() {
+   if (PS3Nav->PS3NavigationConnected) ps3ToggleSettings(PS3Nav, 1);
+   if (PS3Nav2->PS3NavigationConnected) ps3ToggleSettings(PS3Nav2, 2);
 }  
 // =======================================================================================
 // //////////////////////////END: Settings Functions//////////////////////////////////////
@@ -1446,53 +1519,55 @@ void toggleSettings()
 // =======================================================================================
 // //////////////////////////Utility Arm Functions////////////////////////////////////////
 // =======================================================================================
-void ps3utilityArms(PS3BT* myPS3 = PS3Nav, int controllerNumber = 1) {
+void ps3utilityArms(PS3BT* myPS3, int controllerNumber) {
   switch (controllerNumber) {
       case 1:
-        if(myPS3->getButtonPress(L1)&&myPS3->getButtonClick(CROSS))
-          {
-              #ifdef SHADOW_DEBUG
-                output += "Opening/Closing top utility arm\r\n";
-              #endif
-              
-                waveUtilArm(UTIL_ARM_TOP);
-          }
-          if(myPS3->getButtonPress(L1)&&myPS3->getButtonClick(CIRCLE))
-          {
-              #ifdef SHADOW_DEBUG
-                output += "Opening/Closing bottom utility arm\r\n";
-              #endif
-              
-                waveUtilArm(UTIL_ARM_BOTTOM);
-          }
-        break;
-      case 2:
-        if (!(myPS3->getButtonPress(L1)||myPS3->getButtonPress(L2)||myPS3->getButtonPress(PS)))
-        {
-          if(myPS3->getButtonClick(CROSS))
-          {
-              #ifdef SHADOW_DEBUG
-                output += "Opening/Closing top utility arm\r\n";
-              #endif
-              
-                waveUtilArm(UTIL_ARM_TOP);
-          }
-          if(myPS3->getButtonClick(CIRCLE))
-          {
-              #ifdef SHADOW_DEBUG
-                output += "Opening/Closing bottom utility arm\r\n";
-              #endif
-              
-                waveUtilArm(UTIL_ARM_BOTTOM);
-          }
+        if(myPS3->getButtonPress(L1) && myPS3->getButtonClick(CROSS)) {
+          #ifdef SHADOW_DEBUG
+            output += "Waving top utility arm\r\n";
+          #endif
+          waveUtilArm(UTIL_ARM_TOP);
+        } else if(myPS3->getButtonPress(L1) && myPS3->getButtonClick(CIRCLE)) {
+          #ifdef SHADOW_DEBUG
+            output += "Waving bottom utility arm\r\n";
+          #endif
+          waveUtilArm(UTIL_ARM_BOTTOM);
+        } else if(myPS3->getButtonClick(CROSS)) {
+          #ifdef SHADOW_DEBUG
+            output += "Opening utility arms\r\n";
+          #endif
+          openUtilArm(UTIL_ARM_TOP, utilArmOpenPos);
+          openUtilArm(UTIL_ARM_BOTTOM, utilArmOpenPos);
+        } else if(myPS3->getButtonClick(CIRCLE)) {
+          #ifdef SHADOW_DEBUG
+            output += "Closing utility arms\r\n";
+          #endif
+          closeUtilArm(UTIL_ARM_TOP);
+          closeUtilArm(UTIL_ARM_BOTTOM);
         }
         break;
+      // case 2:
+      //   if (!(myPS3->getButtonPress(L1)||myPS3->getButtonPress(L2)||myPS3->getButtonPress(PS))) {
+      //     if(myPS3->getButtonClick(CROSS)) {
+      //       #ifdef SHADOW_DEBUG
+      //         output += "Opening/Closing top utility arm\r\n";
+      //       #endif
+      //       waveUtilArm(UTIL_ARM_TOP);
+      //     }
+      //     if(myPS3->getButtonClick(CIRCLE)) {
+      //       #ifdef SHADOW_DEBUG
+      //         output += "Opening/Closing bottom utility arm\r\n";
+      //       #endif
+      //       waveUtilArm(UTIL_ARM_BOTTOM);
+      //     }
+      //   }
+      //   break;
     }
 }
 
 void utilityArms() {
   if (PS3Nav->PS3NavigationConnected) ps3utilityArms(PS3Nav,1);
-  if (PS3Nav2->PS3NavigationConnected) ps3utilityArms(PS3Nav2,2);
+  // if (PS3Nav2->PS3NavigationConnected) ps3utilityArms(PS3Nav2,2);
 }
 
 void openUtilArm(int arm, int position = utilArmOpenPos) {
@@ -1506,45 +1581,39 @@ void closeUtilArm(int arm) {
 }
 
 void waveUtilArm(int arm) {
-    switch (arm)
-    {
-      case UTIL_ARM_TOP:
-        if(isUtilArmTopOpen == false){
-          openUtilArm(UTIL_ARM_TOP);
-        } else {
-          closeUtilArm(UTIL_ARM_TOP);
-        }
-        break;
-      case UTIL_ARM_BOTTOM:  
-        if(isUtilArmBottomOpen == false){
-          openUtilArm(UTIL_ARM_BOTTOM);
-        } else {
-          closeUtilArm(UTIL_ARM_BOTTOM);
-        }
-        break;
-    }
+  switch (arm) {
+    case UTIL_ARM_TOP:
+      if(isUtilArmTopOpen == false) {
+        openUtilArm(UTIL_ARM_TOP);
+      } else {
+        closeUtilArm(UTIL_ARM_TOP);
+      }
+      break;
+    case UTIL_ARM_BOTTOM:  
+      if(isUtilArmBottomOpen == false) {
+        openUtilArm(UTIL_ARM_BOTTOM);
+      } else {
+        closeUtilArm(UTIL_ARM_BOTTOM);
+      }
+      break;
+  }
 }
 
 void moveUtilArm(int arm, int position) {
-    switch (arm)
-    {
+    switch (arm) {
       case UTIL_ARM_TOP:
         UtilArmTopServo.write(position);
-        if ( position == utilArmClosedPos)
-        {
+        if ( position == utilArmClosedPos) {
           isUtilArmTopOpen = false;
-        } else
-        {
+        } else {
           isUtilArmTopOpen = true;
         }
         break;
       case UTIL_ARM_BOTTOM:  
         UtilArmBottomServo.write(position);
-        if ( position == utilArmClosedPos)
-        {
+        if ( position == utilArmClosedPos) {
           isUtilArmBottomOpen = false;
-        } else
-        {
+        } else {
           isUtilArmBottomOpen = true;
         }
         break;
@@ -2183,14 +2252,12 @@ void processSoundCommand(char soundCommand) {
   #endif
 }
 
-void ps3soundControl(PS3BT* myPS3 = PS3Nav, int controllerNumber = 1) {
+void ps3soundControl(PS3BT* myPS3, int controllerNumber) {
   #ifdef EXTRA_SOUNDS
-      switch (controllerNumber)
-      {
+    switch (controllerNumber) {
       case 1:
         // #endif
-        if (!(myPS3->getButtonPress(L1) || myPS3->getButtonPress(L2) || myPS3->getButtonPress(PS)))
-        {
+        if (!(myPS3->getButtonPress(L1) || myPS3->getButtonPress(L2) || myPS3->getButtonPress(PS))){
           if (myPS3->getButtonClick(UP))
             processSoundCommand('1');
           else if (myPS3->getButtonClick(RIGHT))
@@ -2199,9 +2266,7 @@ void ps3soundControl(PS3BT* myPS3 = PS3Nav, int controllerNumber = 1) {
             processSoundCommand('3');
           else if (myPS3->getButtonClick(LEFT))
             processSoundCommand('4');
-        }
-        else if (myPS3->getButtonPress(L2))
-        {
+        } else if (myPS3->getButtonPress(L1)) {
           if (myPS3->getButtonClick(UP))
             processSoundCommand('5');
           else if (myPS3->getButtonClick(RIGHT))
@@ -2210,23 +2275,20 @@ void ps3soundControl(PS3BT* myPS3 = PS3Nav, int controllerNumber = 1) {
             processSoundCommand('7');
           else if (myPS3->getButtonClick(LEFT))
             processSoundCommand('8');
-        }
-        else if (myPS3->getButtonPress(L1))
-        {
+        } else if (myPS3->getButtonPress(L2)) {
           if (myPS3->getButtonClick(UP))
-            processSoundCommand('+');
-          else if (myPS3->getButtonClick(DOWN))
-            processSoundCommand('-');
-          else if (myPS3->getButtonClick(LEFT))
             processSoundCommand('9');
+          else if (myPS3->getButtonClick(DOWN))
+            processSoundCommand('10');
+          else if (myPS3->getButtonClick(LEFT))
+            processSoundCommand('11');
           else if (myPS3->getButtonClick(RIGHT))
-            processSoundCommand('0');
+            processSoundCommand('12');
         }
         // #ifdef EXTRA_SOUNDS
         break;
       case 2:
-        if (!(myPS3->getButtonPress(L1) || myPS3->getButtonPress(L2) || myPS3->getButtonPress(PS)))
-        {
+        if (!(myPS3->getButtonPress(L1) || myPS3->getButtonPress(L2) || myPS3->getButtonPress(PS))) {
           if (myPS3->getButtonClick(UP))
             processSoundCommand('A');
           else if (myPS3->getButtonClick(RIGHT))
@@ -2235,9 +2297,7 @@ void ps3soundControl(PS3BT* myPS3 = PS3Nav, int controllerNumber = 1) {
             processSoundCommand('C');
           else if (myPS3->getButtonClick(LEFT))
             processSoundCommand('D');
-        }
-        else if (myPS3->getButtonPress(L2))
-        {
+        } else if (myPS3->getButtonPress(L1)) {
           if (myPS3->getButtonClick(UP))
             processSoundCommand('E');
           else if (myPS3->getButtonClick(RIGHT))
@@ -2246,9 +2306,7 @@ void ps3soundControl(PS3BT* myPS3 = PS3Nav, int controllerNumber = 1) {
             processSoundCommand('G');
           else if (myPS3->getButtonClick(LEFT))
             processSoundCommand('H');
-        }
-        else if (myPS3->getButtonPress(L1))
-        {
+        } else if (myPS3->getButtonPress(L2)) {
           if (myPS3->getButtonClick(UP))
             processSoundCommand('I');
           else if (myPS3->getButtonClick(DOWN))
@@ -2259,7 +2317,7 @@ void ps3soundControl(PS3BT* myPS3 = PS3Nav, int controllerNumber = 1) {
             processSoundCommand('L');
         }
         break;
-  }
+    }
   #endif
 }
 
