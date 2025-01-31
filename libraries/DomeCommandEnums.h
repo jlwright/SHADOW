@@ -1,7 +1,7 @@
 #ifndef domecommandenums_h
 #define domecommandenums_h
 
-enum DomeCommands { // all possible dome commands
+enum DomeCommand { // all possible dome commands
   PERISCOPE,
   LIFEFORMSCANNER,
   ZAPPER,
