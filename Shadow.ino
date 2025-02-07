@@ -43,13 +43,32 @@
 //            This can drive 6 servos, and 3 LEDs.  PWM will allow for LED brightness "flicker"
 //  
 //   Cytron SmartDriveDuo-30 (Foot Drive):
-//         Set Cytron Dip Switches: 10110100
+//      For PWM_PWM mode, set Cytron Dip Switches: 10110100
+//      For Serial Simplified mode, set Cytron Dip Switches: 11011100 (115200 baud rate)
+//          Input Mode
+//            SW1-SW3       110 - SERIAL SIMPLIFIED MODE
+//
+//          UART Baudrate
+//            SW4-SW6       000 - 1200
+//                          001 - 2400
+//                          010 - 4800
+//                          011 - 9600
+//                          100 - 19200
+//                          101 - 38400
+//                          110 - 57600
+//                          111 - 115200
 //
 //   SyRen 10 Dome Drive:
 //         For SyRen packetized Serial Set Switches: 1, 2 and 4 Down, All Others Up
 //         NOTE:  Support for SyRen Simple Serial has been removed, due to problems.
 //         Please contact DimensionEngineering to get an RMA to flash your firmware
 //         Some place a 10K ohm resistor between S1 & GND on the SyRen 10 itself
+//
+//   Serial Communication:
+//         Serial0 - Communication to dome
+//         Serial1 - Sound
+//         Serial2 - SyRen
+//         Serial3 - CytronMD
 //
 // =======================================================================================
 
@@ -175,13 +194,13 @@ byte ramping = 6;       // Ramping- the lower this number the longer R2 will tak
 int footDriveSpeed = 0; //This was moved to be global to support better ramping of NPC Motors
 
 byte joystickFootDeadZoneRange = 15;  // For controllers that centering problems, use the lowest number with no drift
-byte joystickDomeDeadZoneRange = 10;  // For controllers that centering problems, use the lowest number with no drift
+byte joystickDomeDeadZoneRange = 20;  // For controllers that centering problems, use the lowest number with no drift
 byte driveDeadBandRange = 10;     // Used to set the Sabertooth DeadZone for foot motors
 
 int invertTurnDirection = -1;   //This may need to be set to 1 for some configurations
-byte domeAutoSpeed = 127;     // Speed used when dome automation is active (1- 127)
+byte domeAutoSpeed = 100;     // Speed used when dome automation is active (1- 127)
 int time360DomeTurnLeft = 1000;  // milliseconds for dome to complete 360 turn at domeAutoSpeed
-int time360DomeTurnRight = 300;  // milliseconds for dome to complete 360 turn at domeAutoSpeed
+int time360DomeTurnRight = 1000;  // milliseconds for dome to complete 360 turn at domeAutoSpeed
                                 ///Cut in half to reduce spin.  Offset for different rotation startups due to gearing.
 
 // #define TEST_CONROLLER   //Support coming soon
@@ -225,8 +244,8 @@ int serialLatency = 25;   //This is a delay factor in ms to prevent queueing of 
 #if FOOT_CONTROLLER == 0
   Sabertooth *ST = new Sabertooth(SABERTOOTH_ADDR, Serial2);
 #elif FOOT_CONTROLLER == 3
-  CytronMD FootMotorRight = CytronMD(PWM_PWM,3,4); //PWM 1A = Pin 3, PWM 1B = Pin 4
-  CytronMD FootMotorLeft = CytronMD(PWM_PWM,5,6); //PWM 1A = Pin 5, PWM 1B = Pin 6
+  CytronMD footMotorLeft(PWM_DIR, 4, 5);  // PWM 1 = Pin 4 (IN1), DIR 1 = Pin 5 (AN1)
+  CytronMD footMotorRight(PWM_DIR, 7, 6); // PWM 2 = Pin 7 (IN2), DIR 2 = Pin 6 (AN2)
 #endif
 Sabertooth *SyR = new Sabertooth(SYREN_ADDR, Serial2);
 
@@ -312,7 +331,6 @@ USB Usb;
 //USBHub Hub1(&Usb); // Some dongles have a hub inside
 BTD Btd(&Usb); // You have to create the Bluetooth Dongle instance like so
 PS3BT *PS3Nav=new PS3BT(&Btd);
-// PS3BT *PS3Nav=new PS3BT(&Btd, 0x00, 0x15, 0x83, 0xE4, 0x2B, 0x8D); //BT dongle MAC is 00:15:83:E4:2B:8D
 PS3BT *PS3Nav2=new PS3BT(&Btd);
 //Used for PS3 Fault Detection
 uint32_t msgLagTime = 0;
@@ -389,7 +407,8 @@ void setup() {
   PS3Nav->attachOnInit(onInitPS3); // onInit() is called upon a new connection - you can call the function whatever you like
   PS3Nav2->attachOnInit(onInitPS3Nav2); 
 
-  //The Arduino Mega has three additional serial ports: 
+  //The Arduino Mega ADK has three additional serial ports: 
+  // - Serial0 on pins 0 (RX) and 1 (TX),
   // - Serial1 on pins 19 (RX) and 18 (TX), 
   // - Serial2 on pins 17 (RX) and 16 (TX), 
   // - Serial3 on pins 15 (RX) and 14 (TX). 
@@ -417,7 +436,8 @@ void setup() {
     leftFootSignal.attach(leftFootPin);
     rightFootSignal.attach(rightFootPin);
   #elif FOOT_CONTROLLER == 3
-    //TODO: setup serial for Cytron
+    footMotorLeft.setSpeed(0); //-255 (full reverse), 0 (stop), 255 (full forward)
+    footMotorRight.setSpeed(0);
   #endif
   stopFeet();
 
@@ -955,8 +975,8 @@ void stopFeet() {
     leftFootSignal.write(90);
     rightFootSignal.write(90);
   #elif FOOT_CONTROLLER == 3
-    FootMotorLeft.setSpeed(0); //0 (stop) - 255 (full speed)
-    FootMotorRight.setSpeed(0); //0 (stop) - 255 (full speed)
+    footMotorLeft.setSpeed(0); //-255 (full reverse), 0 (stop), 255 (full forward)
+    footMotorRight.setSpeed(0);
   #endif
 }
 
@@ -1112,8 +1132,8 @@ boolean ps3FootMotorDrive(PS3BT* myPS3 = PS3Nav) {
                 mixBHD(myPS3->getAnalogHat(LeftHatX), myPS3->getAnalogHat(LeftHatY), drivespeed1);
               //now we've got values for leftFoot and rightFoot, output those somehow...
               //MIGHT NEED TO MAP FROM -100 > 100 to 0 > 255
-              FootMotorLeft.setSpeed(leftFoot); //0 (stop) - 255 (full speed)
-              FootMotorRight.setSpeed(rightFoot); //0 (stop) - 255 (full speed)
+              footMotorLeft.setSpeed(leftFoot); //0 (stop) - 255 (full speed)
+              footMotorRight.setSpeed(rightFoot); //0 (stop) - 255 (full speed)
             #endif
             previousFootMillis = currentMillis;
             return true; //we sent a foot command   
@@ -1368,24 +1388,25 @@ void ps3DomeCommand(PS3BT* myPS3, int controllerNumber) {
           Serial.println("Right controller: L2 + UP");
 #endif
           sendSerialDataToDome(TOGGLEMAGICPANEL);
-        } else if (myPS3->getButtonClick(RIGHT)) {
-#ifdef SHADOW_DEBUG
-          Serial.println("Right controller: L2 + RIGHT");
-#endif
-          sendSerialDataToDome(TOGGLEHOLOS);
-        } else if (myPS3->getButtonClick(DOWN)) {
-#ifdef SHADOW_DEBUG
-          Serial.println("Right controller: L2 + DOWN");
-#endif
-          sendSerialDataToDome(10);
-        } else if (myPS3->getButtonClick(LEFT)) {
-#ifdef SHADOW_DEBUG
-          Serial.println("Right controller: L2 + LEFT");
-#endif
-          sendSerialDataToDome(11);
-        }
+//         } else if (myPS3->getButtonClick(RIGHT)) {
+// #ifdef SHADOW_DEBUG
+//           Serial.println("Right controller: L2 + RIGHT");
+// #endif
+//           sendSerialDataToDome(TOGGLEHOLOS);
+//         } else if (myPS3->getButtonClick(DOWN)) {
+// #ifdef SHADOW_DEBUG
+//           Serial.println("Right controller: L2 + DOWN");
+// #endif
+//           sendSerialDataToDome(10);
+//         } else if (myPS3->getButtonClick(LEFT)) {
+// #ifdef SHADOW_DEBUG
+//           Serial.println("Right controller: L2 + LEFT");
+// #endif
+//           sendSerialDataToDome(11);
+//         }
       }
       break;
+    }
   }
 }
 
