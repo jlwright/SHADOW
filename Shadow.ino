@@ -1176,7 +1176,10 @@ int ps3DomeDrive(PS3BT* myPS3, int controllerNumber)
       case 2:
         if (!(myPS3->getButtonPress(L1)) && !(myPS3->getButtonPress(L2)) && !(myPS3->getButtonPress(PS))) {
           int joystickPosition = myPS3->getAnalogHat(LeftHatX);
+          // Serial.print("joystickDomeDeadZoneRAnge = "); Serial.println(joystickDomeDeadZoneRange);
+          // Serial.print("joystickPosition = "); Serial.println(joystickPosition);
           domeRotationSpeed = (map(joystickPosition, 0, 255, -domespeed, domespeed));
+          // Serial.print("domeRotationSpeed = "); Serial.println(domeRotationSpeed);
           if ( abs(joystickPosition-128) < joystickDomeDeadZoneRange ) 
             domeRotationSpeed = 0;
             
