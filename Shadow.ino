@@ -64,11 +64,15 @@
 //         Please contact DimensionEngineering to get an RMA to flash your firmware
 //         Some place a 10K ohm resistor between S1 & GND on the SyRen 10 itself
 //
-//   Serial Communication:
-//         Serial0 - Communication to dome
-//         Serial1 - Sound
-//         Serial2 - SyRen
-//         Serial3 - CytronMD
+//   Sound Hardware:
+//         200W Bluetooth 5.0 Amplifier Board TPA3116D2 100W+100W Stereo Dual Channel Amp Board
+//         DIYables MP3 Player Module for Arduino, ESP32, ESP8266, Raspberry Pi
+//
+//   Serial Communication, using Mega ADK:
+//         Serial0 pins  0 (RX) and  1 (TX) - Debugging
+//         Serial1 pins 19 (RX) and 18 (TX) - Sound
+//         Serial2 pins 17 (RX) and 16 (TX) - SyRen
+//         Serial3 pins 15 (RX) and 14 (TX) - Communication to dome
 //
 // =======================================================================================
 
@@ -116,6 +120,7 @@
   #include <CFSoundIII.h>
   CFSoundIII cfSound;
 #endif
+#include <SoftwareSerial.h>
 #include <HardwareSerial.h>
 #include <USBAPI.h>
 
@@ -151,10 +156,34 @@ int motorControllerBaudRate = 9600; // Set the baud rate for the Syren motor con
 // ---------------------------------------------------------------------------------------
 //Uncomment one line based on your sound system
 // #define SOUND_CFSOUNDIII     //Original system tested with SHADOW
-//#define SOUND_MP3TRIGGER   //Code Tested by Dave C. and Marty M.
+// #define SOUND_MP3TRIGGER   //Code Tested by Dave C. and Marty M.
 //#define SOUND_ROGUE_RMP3   //Support coming soon
 //#define SOUND_RASBERRYPI   //Support coming soon
+#define DIYABLES_MP3_PLAYER
 #define EXTRA_SOUNDS
+
+#ifdef DIYABLES_MP3_PLAYER
+  #define CMD_PLAY_NEXT 0x01
+  #define CMD_PLAY_PREV 0x02
+  #define CMD_PLAY_W_INDEX 0x03
+  #define CMD_SET_VOLUME 0x06
+  #define CMD_SEL_DEV 0x09
+  #define CMD_PLAY_W_VOL 0x22
+  #define CMD_PLAY 0x0D
+  #define CMD_PAUSE 0x0E
+  #define CMD_SINGLE_CYCLE 0x19
+  #define CMD_STOP 0x16
+
+  #define DEV_TF 0x02
+  #define SINGLE_CYCLE_ON 0x00
+  #define SINGLE_CYCLE_OFF 0x01
+
+  #define ARDUINO_RX 15 // Arduino Pin connected to the TX of the Serial MP3 Player module
+  #define ARDUINO_TX 14 // Arduino Pin connected to the RX of the Serial MP3 Player module
+#endif
+
+int soundBaudRate = 9600; // baud rate of 9600 required by MP3 module
+SoftwareSerial mp3(ARDUINO_RX, ARDUINO_TX); // Serial1 (RX, TX)
 
 // ---------------------------------------------------------------------------------------
 //                          Dome Control System
@@ -163,6 +192,8 @@ int motorControllerBaudRate = 9600; // Set the baud rate for the Syren motor con
 #define DOME_I2C_ADAFRUIT       //Current SHADOW configuration used with R-Series Logics
 //#define DOME_SERIAL_TEECES    //Original system tested with SHADOW
 //#define DOME_I2C_TEECES       //Untested Nov 2014
+
+int domeCommunicationBaudRate = 115200;
 
 // ---------------------------------------------------------------------------------------
 //                          User Settings
@@ -351,7 +382,7 @@ boolean isDomeMotorStopped = true;
 boolean isPS3NavigatonInitialized = false;
 boolean isSecondaryPS3NavigatonInitialized = false;
 
-byte vol = 0; // 0 = full volume, 255 off
+byte vol = 10; // default volume, 0 = full volume, 255 = off
 boolean isDriveStickEnabled = true;
 boolean isDomeStickEnabled = true;
 
@@ -375,6 +406,19 @@ enum DomeCommand { // all possible dome commands
   PANELWAVE,
   PANELDANCE,
   TOGGLEMAGICPANEL
+};
+
+// Configure enum int values to match the order of sounds on TF card
+enum SoundCommand {
+  VOL_UP,
+  VOL_DOWN,
+  STOP_SOUND,
+  SOUND_ON,
+  SOUND_OFF,
+  WHISTLE = 1,
+  BEEP = 2,
+  CHORTLE = 3,
+  RAZZ = 4
 };
 
 byte action = 0;
@@ -407,13 +451,15 @@ void setup() {
   PS3Nav->attachOnInit(onInitPS3); // onInit() is called upon a new connection - you can call the function whatever you like
   PS3Nav2->attachOnInit(onInitPS3Nav2); 
 
-  //The Arduino Mega ADK has three additional serial ports: 
-  // - Serial0 on pins 0 (RX) and 1 (TX),
-  // - Serial1 on pins 19 (RX) and 18 (TX), 
-  // - Serial2 on pins 17 (RX) and 16 (TX), 
-  // - Serial3 on pins 15 (RX) and 14 (TX). 
+  //Setup for Serial1 - Sound 
+  Serial1.begin(soundBaudRate);
+  while (!Serial1); // wait for Serial1 to begin
+  Serial.println(("Serial1 started for SOUND"));
+  mp3_command(CMD_SEL_DEV, DEV_TF); // select the TF card
+  // delay(200); // wait for 200ms
+  // mp3.begin(soundBaudRate); // start SoftwareSerial object for MP3 board
+  // Serial.println(("mp3 started for MP3 board"));
 
-  //Setup for Serial1:: Sound 
   #ifdef SOUND_CFSOUNDIII
     cfSound.setup(&Serial1,2400);
   #endif
@@ -421,9 +467,15 @@ void setup() {
     trigger.setup(&Serial1);
     trigger.setVolume(vol);
   #endif
+  #ifdef DIYABLES_MP3_PLAYER
+    mp3.begin(soundBaudRate);
+  #endif
 
-  //Setup for Serial2:: Motor Controllers - Syren (Dome) and Sabertooth (Feet) 
+  //Setup for Serial2 - Syren Motor Controller 
   Serial2.begin(motorControllerBaudRate);
+  while (!Serial2); // wait for Serial2 to start
+  Serial.println(("Serial2 started for SYREN"));
+
   SyR->autobaud();
   SyR->setTimeout(300);      //DMB:  How low can we go for safety reasons?  multiples of 100ms
 
@@ -441,26 +493,21 @@ void setup() {
   #endif
   stopFeet();
 
-  // NOTE: *Not all* Sabertooth controllers need the autobaud command.
-  //       It doesn't hurt anything, but V2 controllers use an
-  //       EEPROM setting (changeable with the function setBaudRate) to set
-  //       the baud rate instead of detecting with autobaud.
-  //
-  //       If you have a 2x12, 2x25 V2, 2x60 or SyRen 50, you can remove
-  //       the autobaud line and save yourself two seconds of startup delay.
+  //Setup for Serial3 - Dome Communication
+  Serial3.begin(domeCommunicationBaudRate);
+  while (!Serial3); // wait for Serial3 to start
+  Serial.println(("Serial3 started for DOME COMMUNICATION"));
 
-
+  
   #ifdef DOME_I2C_ADAFRUIT           
       domePWM.begin();
       domePWM.setPWMFreq(50);  // Analog servos run at ~50 Hz updates
   #endif
-
   #ifdef DOME_SERIAL_TEECES
     //Setup for Serial3:: Dome Communication Link   
     Serial3.begin(57600);//start the library, pass in the data details and the name of the serial port.
     ET.begin(details(domeData), &Serial3);
   #endif
-  
   #ifdef DOME_I2C_TEECES    
     Wire.begin();
     ET.begin(details(domeData), &Wire);
@@ -500,7 +547,7 @@ void loop() {
   toggleSettings();
   soundControl();
   // flashCoinSlotLEDs();
-  flushAndroidTerminal();
+  flushAndroidTerminal(); // 'output' variable is printed here
 }
 
 void initAndroidTerminal() {
@@ -1532,42 +1579,36 @@ void ps3ToggleSettings(PS3BT* myPS3, int controllerNumber) {
           output += "Disabling the Drive Stick\r\n";
         #endif
         isDriveStickEnabled = false;
-  //        trigger.play(52);
       }
       if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(CIRCLE)) {
         #ifdef SHADOW_DEBUG
           output += "Enabling the Drive Stick\r\n";
         #endif
         isDriveStickEnabled = true;
-  //        trigger.play(53);
       }
       if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(UP)) {
         #ifdef SHADOW_DEBUG
           output += "Volume up\r\n";
         #endif
-        // raise volume of amp board
-  //        trigger.play(53);
+        processSoundCommand(VOL_UP);
       }
       if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(DOWN)) {
         #ifdef SHADOW_DEBUG
           output += "Volume down\r\n";
         #endif
-        // lower volume of amp board
-  //        trigger.play(53);
+        processSoundCommand(VOL_DOWN);
       }
       if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(RIGHT)) {
         #ifdef SHADOW_DEBUG
           output += "Sound on\r\n";
         #endif
-        // set volume to default level
-  //        trigger.play(53);
+        processSoundCommand(SOUND_ON);
       }
       if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(LEFT)) {
         #ifdef SHADOW_DEBUG
           output += "Sound off\r\n";
         #endif
-        // set volume to zero
-  //        trigger.play(53);
+        processSoundCommand(SOUND_OFF);
       }
       break;
     case 2:
@@ -1576,28 +1617,24 @@ void ps3ToggleSettings(PS3BT* myPS3, int controllerNumber) {
           output += "Disabling the Dome Stick\r\n";
         #endif
         isDomeStickEnabled = false;
-  //        trigger.play(52);
       }
       if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(CIRCLE)) {
         #ifdef SHADOW_DEBUG
           output += "Enabling the Dome Stick\r\n";
         #endif
         isDomeStickEnabled = true;
-  //        trigger.play(53);
       }
       if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(UP)) {
         #ifdef SHADOW_DEBUG
           output += "Holos on\r\n";
         #endif
-        // turn holos on
-  //        trigger.play(53);
+        // TODO: turn holos on
       }
       if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(DOWN)) {
         #ifdef SHADOW_DEBUG
           output += "Holos off\r\n";
         #endif
-        // turn holos off
-  //        trigger.play(53);
+        // TODO: turn holos off
       }
       if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(RIGHT)) {
         #ifdef SHADOW_DEBUG
@@ -1612,13 +1649,12 @@ void ps3ToggleSettings(PS3BT* myPS3, int controllerNumber) {
         // domeData.hpa = 1;
         // domeData.dsp = 100;
         // ET.sendData();
-        // trigger.play(53);
       }
       if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(LEFT)) {
         #ifdef SHADOW_DEBUG
           output += "Holo auto movement off\r\n";
         #endif
-        // disable holo auto movement
+        // TODO: disable holo auto movement
 
         // #ifdef SHADOW_DEBUG
         //   output += "Disabling the Holo Automation\r\n";
@@ -1627,7 +1663,6 @@ void ps3ToggleSettings(PS3BT* myPS3, int controllerNumber) {
         // domeData.hpa = 0;
         // domeData.dsp = 100;
         // ET.sendData();
-        // trigger.play(53);
       }
       if(myPS3->getButtonPress(L2)&&myPS3->getButtonClick(CROSS)) {
 	    if(isAutomateDomeOn) {
@@ -1639,7 +1674,6 @@ void ps3ToggleSettings(PS3BT* myPS3, int controllerNumber) {
         domeTargetPosition = 0;
         SyR->stop();
         action = 0;
-//        trigger.play(66);
 	    }
     }
     if(myPS3->getButtonPress(L2)&&myPS3->getButtonClick(CIRCLE)) {
@@ -1647,7 +1681,6 @@ void ps3ToggleSettings(PS3BT* myPS3, int controllerNumber) {
           output += "Enabling the Dome Automation\r\n";
         #endif
         isAutomateDomeOn = true;
-//        trigger.play(65);
     }
       break;
   }
@@ -1904,7 +1937,7 @@ boolean teecesPs3Holoprojector(PS3BT *myPS3, int controllerNumber) {
     return true;
   }
 
-  /////hp movement
+/////hp movement
 //   if (myPS3->getButtonPress(PS)) {
 //     if (myPS3->getButtonPress(UP)) {
 // #ifdef SHADOW_DEBUG
@@ -2162,7 +2195,7 @@ void holoprojector() {
 // =======================================================================================
 // //////////////////////////Sound Functions//////////////////////////////////////////////
 // =======================================================================================
-void processSoundCommand(char soundCommand) {
+void processSoundCommand(SoundCommand soundCommand) {
 #ifdef SOUND_CFSOUNDIII
   cfSound.playfile("happy.wav");
   cfSound.setVolume(20);
@@ -2218,7 +2251,9 @@ void processSoundCommand(char soundCommand) {
   switch (soundCommand) {
     case '+':
 #ifdef SHADOW_DEBUG
-      output += "Volume Up\r\n";
+      output += "Volume Up - ";
+      output += vol;
+      output += "\r\n";
 #endif
       if (vol > 0) {
         vol--;
@@ -2227,7 +2262,9 @@ void processSoundCommand(char soundCommand) {
       break;
     case '-':
 #ifdef SHADOW_DEBUG
-      output += "Volume Down\r\n";
+      output += "Volume Down - ";
+      output += vol;
+      output += "\r\n";
 #endif
       if (vol < 255) {
         vol++;
@@ -2250,7 +2287,7 @@ void processSoundCommand(char soundCommand) {
       output += " - Play Wolf Whistle.\r\n";
 #endif
       // Play Wolf Whistle
-      trigger.play(4);
+      trigger.play(2);
       break;
     case '3':
 #ifdef SHADOW_DEBUG
@@ -2268,7 +2305,7 @@ void processSoundCommand(char soundCommand) {
       output += " - Play Chortle\r\n";
 #endif
       // Play Chortle
-      trigger.play(2);
+      trigger.play(4);
       break;
     case '5':
 #ifdef SHADOW_DEBUG
@@ -2367,10 +2404,176 @@ void processSoundCommand(char soundCommand) {
       trigger.play(60);
   }
 #endif
+
+#ifdef DIYABLES_MP3_PLAYER
+  // only need cases for non-numeric soundCommands, if track numbers match soundCommand number
+  switch (soundCommand) {
+    case VOL_UP:
+      #ifdef SHADOW_DEBUG
+        output += "Volume Up - ";
+        output += vol;
+        output += "\r\n";
+      #endif
+      if (vol < 100) {
+        vol++;
+        mp3_command(CMD_SET_VOLUME, vol);
+      }
+      break;
+    case VOL_DOWN:
+      #ifdef SHADOW_DEBUG
+        output += "Volume Down - ";
+        output += vol;
+        output += "\r\n";
+      #endif
+      if (vol > 0) {
+        vol--;
+        mp3_command(CMD_SET_VOLUME, vol);
+      }
+      break;
+    case STOP_SOUND:
+      #ifdef SHADOW_DEBUG
+        output += "Stopping current sound\r\n";
+      #endif
+        mp3_command(CMD_STOP, 0);
+      break;
+//     case '1':
+// #ifdef SHADOW_DEBUG
+//       output += "Sound Button ";
+//       output += soundCommand;
+//       output += " - Play Sceam\r\n";
+// #endif
+//       // Play Sceam
+//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+//       break;
+//     case '2':
+// #ifdef SHADOW_DEBUG
+//       output += "Sound Button ";
+//       output += soundCommand;
+//       output += " - Play Wolf Whistle.\r\n";
+// #endif
+//       // Play Wolf Whistle
+//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+//       break;
+//     case '3':
+// #ifdef SHADOW_DEBUG
+//       output += "Sound Button ";
+//       output += soundCommand;
+//       output += " - Play Doo Doo\r\n";
+// #endif
+//       // Play Doo Doo
+//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+//       break;
+//     case '4':
+// #ifdef SHADOW_DEBUG
+//       output += "Sound Button ";
+//       output += soundCommand;
+//       output += " - Play Chortle\r\n";
+// #endif
+//       // Play Chortle
+//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+//       break;
+//     case '5':
+// #ifdef SHADOW_DEBUG
+//       output += "Sound Button ";
+//       output += soundCommand;
+//       // output += " - Play Random Sentence.\r\n";
+// #endif
+//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+//       break;
+//     case '6':
+// #ifdef SHADOW_DEBUG
+//       output += "Sound Button ";
+//       output += soundCommand;
+//       // output += " - Play Random Misc.\r\n";
+// #endif
+//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+//       break;
+//     case '7':
+// #ifdef SHADOW_DEBUG
+//       output += "Sound Button ";
+//       output += soundCommand;
+//       output += " - Play Cantina Song.\r\n";
+// #endif
+//       // Play Cantina Song
+//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+//       break;
+//     case '8':
+// #ifdef SHADOW_DEBUG
+//       output += "Sound Button ";
+//       output += soundCommand;
+//       output += " - Play Imperial March.\r\n";
+// #endif
+//       // Play Imperial March
+//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+//       break;
+//     case '9':
+// #ifdef SHADOW_DEBUG
+//       output += "Sound Button ";
+//       output += soundCommand;
+//       output += " - Play Let It Go.\r\n";
+// #endif
+//       // Play Let It Go
+//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+//       break;
+//     case '0':
+// #ifdef SHADOW_DEBUG
+//       output += "Sound Button ";
+//       output += soundCommand;
+//       output += " - Play Gangdum Style\r\n";
+// #endif
+//       // Play Gangnam Style
+//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+//       break;
+//     case 'A':
+// #ifdef SHADOW_DEBUG
+//       output += "Sound Button ";
+//       output += soundCommand;
+//       output += " - Play Upset a Droid\r\n";
+// #endif
+//       // Play Upset a Droid
+//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+//       break;
+//     case 'B':
+// #ifdef SHADOW_DEBUG
+//       output += "Sound Button ";
+//       output += soundCommand;
+//       output += " - Play Summer\r\n";
+// #endif
+//       // Play Summer
+//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+//       break;
+//     case 'C':
+// #ifdef SHADOW_DEBUG
+//       output += "Sound Button ";
+//       output += soundCommand;
+//       output += " - Play Everything is Awesome\r\n";
+// #endif
+//       // Play Everything is Awesome
+//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+//       break;
+//     case 'D':
+// #ifdef SHADOW_DEBUG
+//       output += "Sound Button ";
+//       output += soundCommand;
+//       output += " - Play What Does the Fox Say\r\n";
+// #endif
+//       // Play What Does the Fox Say
+//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+//       break;
+    default:
+      #ifdef SHADOW_DEBUG
+        output += "Sound Button - Play ";
+        output += soundCommand;
+        output += "\r\n";
+      #endif
+      mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+      break;
+  }
+#endif
 }
 
 void ps3soundControl(PS3BT* myPS3, int controllerNumber) {
-  #ifdef EXTRA_SOUNDS
+  // #ifdef EXTRA_SOUNDS
     switch (controllerNumber) {
       case 1:
         // #endif
@@ -2379,67 +2582,66 @@ void ps3soundControl(PS3BT* myPS3, int controllerNumber) {
 #ifdef SHADOW_DEBUG
             Serial.println("Left controller: UP");
 #endif
-            processSoundCommand('1');
+            processSoundCommand(WHISTLE);
           } else if (myPS3->getButtonClick(RIGHT)) {
 #ifdef SHADOW_DEBUG
             Serial.println("Left controller: RIGHT");
 #endif
-            processSoundCommand('2');
+            processSoundCommand(BEEP);
           } else if (myPS3->getButtonClick(DOWN)) {
 #ifdef SHADOW_DEBUG
             Serial.println("Left controller: DOWN");
 #endif
-            processSoundCommand('3');
+            processSoundCommand(CHORTLE);
           } else if (myPS3->getButtonClick(LEFT)) {
 #ifdef SHADOW_DEBUG
             Serial.println("Left controller: LEFT");
 #endif
-            processSoundCommand('4');
+            processSoundCommand(WHISTLE);
           }
         } else if (myPS3->getButtonPress(L1)) {
           if (myPS3->getButtonClick(UP)) {
 #ifdef SHADOW_DEBUG
             Serial.println("Left controller: L1 + UP");
 #endif
-            processSoundCommand('5');
+            processSoundCommand(WHISTLE);
           } else if (myPS3->getButtonClick(RIGHT)) {
 #ifdef SHADOW_DEBUG
             Serial.println("Left controller: L1 + RIGHT");
 #endif
-            processSoundCommand('6');
+            processSoundCommand(WHISTLE);
           } else if (myPS3->getButtonClick(DOWN)) {
 #ifdef SHADOW_DEBUG
             Serial.println("Left controller: L1 + DOWN");
 #endif
-            processSoundCommand('7');
+            processSoundCommand(WHISTLE);
           } else if (myPS3->getButtonClick(LEFT)) {
 #ifdef SHADOW_DEBUG
             Serial.println("Left controller: L1 + LEFT");
 #endif
-            processSoundCommand('8');
+            processSoundCommand(RAZZ);
           }
         } else if (myPS3->getButtonPress(L2)) {
           if (myPS3->getButtonClick(UP)) {
 #ifdef SHADOW_DEBUG
             Serial.println("Left controller: L2 + UP");
 #endif
-            processSoundCommand('9');
+            processSoundCommand(BEEP);
           } else if (myPS3->getButtonClick(RIGHT)) {
 #ifdef SHADOW_DEBUG
             Serial.println("Left controller: L2 + RIGHT");
 #endif
-            processSoundCommand('10');
+            processSoundCommand(BEEP);
           } else if (myPS3->getButtonClick(DOWN)) {
 #ifdef SHADOW_DEBUG
             Serial.println("Left controller: :L2 + DOWN");
 #endif
-            processSoundCommand('11');
+            processSoundCommand(BEEP);
           } else if (myPS3->getButtonClick(LEFT)) {
 #ifdef SHADOW_DEBUG
             Serial.println("Left controller: L2 + LEFT");
 #endif
-            processSoundCommand('12');
-          
+            processSoundCommand(BEEP);
           }
         }
         break;
@@ -2513,15 +2715,17 @@ void ps3soundControl(PS3BT* myPS3, int controllerNumber) {
 //         }
         break;
     }
-  #endif
+  // #endif
 }
 
 void soundControl() {
-   if (PS3Nav->PS3NavigationConnected) ps3soundControl(PS3Nav,1);
-   if (PS3Nav2->PS3NavigationConnected) ps3soundControl(PS3Nav2,2);
+  if (PS3Nav->PS3NavigationConnected) 
+    ps3soundControl(PS3Nav,1);
+  if (PS3Nav2->PS3NavigationConnected) 
+    ps3soundControl(PS3Nav2,2);
 
-    // Read from cfsound, send to port USB Serial & BT Serial:
-    #ifdef SOUND_CFSOUNDIII
+  // Read from cfsound, send to port USB Serial & BT Serial:
+  #ifdef SOUND_CFSOUNDIII
     if (Serial1.available()) {
       int inByte = Serial1.read();
       Serial.write(inByte);         
@@ -2531,8 +2735,23 @@ void soundControl() {
       }
       #endif
     }
-    #endif
+  #endif
 }  
+
+void mp3_command(int8_t command, int16_t dat) {
+  int8_t frame[8] = { 0 };
+  frame[0] = 0x7e;                // starting byte
+  frame[1] = 0xff;                // version
+  frame[2] = 0x06;                // the number of bytes of the command without starting byte and ending byte
+  frame[3] = command;             //
+  frame[4] = 0x00;                // 0x00 = no feedback, 0x01 = feedback
+  frame[5] = (int8_t)(dat >> 8);  // data high byte
+  frame[6] = (int8_t)(dat);       // data low byte
+  frame[7] = 0xef;                // ending byte
+  for (uint8_t i = 0; i < 8; i++) {
+    mp3.write(frame[i]);
+  }
+}
 // =======================================================================================
 // //////////////////////////END: Sound Functions/////////////////////////////////////////
 // =======================================================================================
