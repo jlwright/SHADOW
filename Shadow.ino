@@ -409,11 +409,11 @@ enum DomeCommand { // all possible dome commands
 
 // Configure enum int values to match the order of sounds on TF card
 enum SoundCommand {
-  VOL_UP,
-  VOL_DOWN,
-  STOP_SOUND,
-  SOUND_ON,
-  SOUND_OFF,
+  VOL_UP = 99,
+  VOL_DOWN = 98,
+  STOP_SOUND = 100,
+  SOUND_ON = 97,
+  SOUND_OFF = 96,
   WHISTLE = 1,
   BEEP = 2,
   CHORTLE = 3,
@@ -2580,21 +2580,25 @@ void ps3soundControl(PS3BT* myPS3, int controllerNumber) {
           if (myPS3->getButtonClick(UP)) {
 #ifdef SHADOW_DEBUG
             Serial.println("Left controller: UP");
+            Serial.println("play sound 001");
 #endif
             processSoundCommand(WHISTLE);
           } else if (myPS3->getButtonClick(RIGHT)) {
 #ifdef SHADOW_DEBUG
             Serial.println("Left controller: RIGHT");
+            Serial.println("play sound 002");
 #endif
             processSoundCommand(BEEP);
           } else if (myPS3->getButtonClick(DOWN)) {
 #ifdef SHADOW_DEBUG
             Serial.println("Left controller: DOWN");
+            Serial.println("play sound 003");
 #endif
             processSoundCommand(CHORTLE);
           } else if (myPS3->getButtonClick(LEFT)) {
 #ifdef SHADOW_DEBUG
             Serial.println("Left controller: LEFT");
+            Serial.println("play sound 004");
 #endif
             processSoundCommand(WHISTLE);
           }
@@ -2602,21 +2606,25 @@ void ps3soundControl(PS3BT* myPS3, int controllerNumber) {
           if (myPS3->getButtonClick(UP)) {
 #ifdef SHADOW_DEBUG
             Serial.println("Left controller: L1 + UP");
+            Serial.println("play sound 005");
 #endif
             processSoundCommand(WHISTLE);
           } else if (myPS3->getButtonClick(RIGHT)) {
 #ifdef SHADOW_DEBUG
             Serial.println("Left controller: L1 + RIGHT");
+            Serial.println("play sound 006");
 #endif
             processSoundCommand(WHISTLE);
           } else if (myPS3->getButtonClick(DOWN)) {
 #ifdef SHADOW_DEBUG
             Serial.println("Left controller: L1 + DOWN");
+            Serial.println("play sound 007");
 #endif
             processSoundCommand(WHISTLE);
           } else if (myPS3->getButtonClick(LEFT)) {
 #ifdef SHADOW_DEBUG
             Serial.println("Left controller: L1 + LEFT");
+            Serial.println("play sound 008");
 #endif
             processSoundCommand(RAZZ);
           }
@@ -2624,21 +2632,25 @@ void ps3soundControl(PS3BT* myPS3, int controllerNumber) {
           if (myPS3->getButtonClick(UP)) {
 #ifdef SHADOW_DEBUG
             Serial.println("Left controller: L2 + UP");
+            Serial.println("play sound 009");
 #endif
             processSoundCommand(BEEP);
           } else if (myPS3->getButtonClick(RIGHT)) {
 #ifdef SHADOW_DEBUG
             Serial.println("Left controller: L2 + RIGHT");
+            Serial.println("play sound 010");
 #endif
             processSoundCommand(BEEP);
           } else if (myPS3->getButtonClick(DOWN)) {
 #ifdef SHADOW_DEBUG
             Serial.println("Left controller: :L2 + DOWN");
+            Serial.println("play sound 011");
 #endif
             processSoundCommand(BEEP);
           } else if (myPS3->getButtonClick(LEFT)) {
 #ifdef SHADOW_DEBUG
             Serial.println("Left controller: L2 + LEFT");
+            Serial.println("play sound 012");
 #endif
             processSoundCommand(BEEP);
           }
@@ -2754,22 +2766,6 @@ void mp3_command(int8_t command, int16_t dat) {
 // =======================================================================================
 // //////////////////////////END: Sound Functions/////////////////////////////////////////
 // =======================================================================================
-#pragma endregion
-
-#pragma region CoinSlotFunctions
-// =======================================================================================
-//          Flash Coin Slot LED Function
-// =======================================================================================
-// void flashCoinSlotLEDs() {
-//   for(int i = 0; i<numberOfCoinSlotLEDs; i++) {
-//     if(millis() > nextCoinSlotLedFlash[i]) {
-//       if(coinSlotLedState[i] == LOW) coinSlotLedState[i] = HIGH; 
-//       else coinSlotLedState[i] = LOW;
-//       digitalWrite(COIN_SLOT_LED_PINS[i],coinSlotLedState[i]);
-//       nextCoinSlotLedFlash[i] = millis()+random(100, 1000) ; // next toggle random time
-//     } 
-//   }
-// }
 #pragma endregion
 
 #ifdef TEST_CONROLLER
