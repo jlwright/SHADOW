@@ -178,8 +178,8 @@ int motorControllerBaudRate = 9600; // Set the baud rate for the Syren motor con
   #define SINGLE_CYCLE_ON 0x00
   #define SINGLE_CYCLE_OFF 0x01
 
-  #define ARDUINO_RX 14 // Arduino Pin connected to the TX of the Serial MP3 Player module
-  #define ARDUINO_TX 15 // Arduino Pin connected to the RX of the Serial MP3 Player module
+  #define ARDUINO_RX 18 // Arduino Pin connected to the TX of the Serial MP3 Player module
+  #define ARDUINO_TX 19 // Arduino Pin connected to the RX of the Serial MP3 Player module
 
   #define MIN_VOLUME 0
   #define MAX_VOLUME 30
