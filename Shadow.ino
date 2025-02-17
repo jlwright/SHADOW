@@ -178,8 +178,11 @@ int motorControllerBaudRate = 9600; // Set the baud rate for the Syren motor con
   #define SINGLE_CYCLE_ON 0x00
   #define SINGLE_CYCLE_OFF 0x01
 
-  #define ARDUINO_RX 15 // Arduino Pin connected to the TX of the Serial MP3 Player module
-  #define ARDUINO_TX 14 // Arduino Pin connected to the RX of the Serial MP3 Player module
+  #define ARDUINO_RX 14 // Arduino Pin connected to the TX of the Serial MP3 Player module
+  #define ARDUINO_TX 15 // Arduino Pin connected to the RX of the Serial MP3 Player module
+
+  #define MIN_VOLUME 0
+  #define MAX_VOLUME 30
 #endif
 
 int soundBaudRate = 9600; // baud rate of 9600 required by MP3 module
@@ -277,7 +280,7 @@ int serialLatency = 25;   //This is a delay factor in ms to prevent queueing of 
   CytronMD footMotorLeft(PWM_DIR, 4, 5);  // PWM 1 = Pin 4 (IN1), DIR 1 = Pin 5 (AN1)
   CytronMD footMotorRight(PWM_DIR, 7, 6); // PWM 2 = Pin 7 (IN2), DIR 2 = Pin 6 (AN2)
 #endif
-Sabertooth *SyR = new Sabertooth(SYREN_ADDR, Serial2);
+Sabertooth *SyR = new Sabertooth(SYREN_ADDR, Serial2); // declare Syren object
 
 #ifdef DOME_SERIAL_TEECES    
     EasyTransfer ET;
@@ -409,11 +412,11 @@ enum DomeCommand { // all possible dome commands
 
 // Configure enum int values to match the order of sounds on TF card
 enum SoundCommand {
-  VOL_UP = 99,
-  VOL_DOWN = 98,
+  SOUND_ON = 96,
+  SOUND_OFF = 97,
+  VOL_UP = 98,
+  VOL_DOWN = 99,
   STOP_SOUND = 100,
-  SOUND_ON = 97,
-  SOUND_OFF = 96,
   WHISTLE = 1,
   BEEP = 2,
   CHORTLE = 3,
@@ -454,11 +457,12 @@ void setup() {
   Serial1.begin(soundBaudRate);
   while (!Serial1); // wait for Serial1 to begin
   Serial.println(("Serial1 started for SOUND"));
-  mp3_command(CMD_SEL_DEV, DEV_TF); // select the TF card
-  // delay(200); // wait for 200ms
   // mp3.begin(soundBaudRate); // start SoftwareSerial object for MP3 board
+  // delay(200);
   // Serial.println(("mp3 started for MP3 board"));
-
+  // mp3_command(CMD_SEL_DEV, (int16_t)0, DEV_TF); // select the TF card
+  // delay(200);
+  
   #ifdef SOUND_CFSOUNDIII
     cfSound.setup(&Serial1,2400);
   #endif
@@ -467,7 +471,12 @@ void setup() {
     trigger.setVolume(vol);
   #endif
   #ifdef DIYABLES_MP3_PLAYER
-    mp3.begin(soundBaudRate);
+    mp3.begin(soundBaudRate); // start SoftwareSerial object for MP3 board
+    delay(200);
+    Serial.println(("mp3 object started for MP3 board"));
+    
+    mp3_command(CMD_SEL_DEV, (int16_t)0, DEV_TF); // select the TF card
+    delay(200);
   #endif
 
   //Setup for Serial2 - Syren Motor Controller 
@@ -497,7 +506,9 @@ void setup() {
   while (!Serial3); // wait for Serial3 to start
   Serial.println(("Serial3 started for DOME COMMUNICATION"));
 
-  
+  mp3_command(0x08, (int16_t)0, (int16_t)001);
+  Serial.println("sound should have played");
+
   #ifdef DOME_I2C_ADAFRUIT           
       domePWM.begin();
       domePWM.setPWMFreq(50);  // Analog servos run at ~50 Hz updates
@@ -2413,9 +2424,9 @@ void processSoundCommand(SoundCommand soundCommand) {
         output += vol;
         output += "\r\n";
       #endif
-      if (vol < 100) {
+      if (vol < MAX_VOLUME) {
         vol++;
-        mp3_command(CMD_SET_VOLUME, vol);
+        mp3_command(CMD_SET_VOLUME, (int16_t)0, vol);
       }
       break;
     case VOL_DOWN:
@@ -2424,16 +2435,30 @@ void processSoundCommand(SoundCommand soundCommand) {
         output += vol;
         output += "\r\n";
       #endif
-      if (vol > 0) {
+      if (vol > MIN_VOLUME) {
         vol--;
-        mp3_command(CMD_SET_VOLUME, vol);
+        mp3_command(CMD_SET_VOLUME, (int16_t)0, vol);
       }
+      break;
+     case SOUND_ON:
+      #ifdef SHADOW_DEBUG
+        output += "Sound on with volume - ";
+        output += vol;
+        output += "\r\n";
+      #endif
+        mp3_command(CMD_SET_VOLUME, (int16_t)0, vol);
+      break;
+    case SOUND_OFF:
+      #ifdef SHADOW_DEBUG
+        output += "Sound off\r\n";
+      #endif
+        mp3_command(CMD_SET_VOLUME, (int16_t)0, MIN_VOLUME);
       break;
     case STOP_SOUND:
       #ifdef SHADOW_DEBUG
         output += "Stopping current sound\r\n";
       #endif
-        mp3_command(CMD_STOP, 0);
+        mp3_command(CMD_STOP, (int16_t)0, 0);
       break;
 //     case '1':
 // #ifdef SHADOW_DEBUG
@@ -2442,7 +2467,7 @@ void processSoundCommand(SoundCommand soundCommand) {
 //       output += " - Play Sceam\r\n";
 // #endif
 //       // Play Sceam
-//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)0, (int16_t)soundCommand);
 //       break;
 //     case '2':
 // #ifdef SHADOW_DEBUG
@@ -2451,7 +2476,7 @@ void processSoundCommand(SoundCommand soundCommand) {
 //       output += " - Play Wolf Whistle.\r\n";
 // #endif
 //       // Play Wolf Whistle
-//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)0, (int16_t)soundCommand);
 //       break;
 //     case '3':
 // #ifdef SHADOW_DEBUG
@@ -2460,7 +2485,7 @@ void processSoundCommand(SoundCommand soundCommand) {
 //       output += " - Play Doo Doo\r\n";
 // #endif
 //       // Play Doo Doo
-//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)0, (int16_t)soundCommand);
 //       break;
 //     case '4':
 // #ifdef SHADOW_DEBUG
@@ -2469,7 +2494,7 @@ void processSoundCommand(SoundCommand soundCommand) {
 //       output += " - Play Chortle\r\n";
 // #endif
 //       // Play Chortle
-//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)0, (int16_t)soundCommand);
 //       break;
 //     case '5':
 // #ifdef SHADOW_DEBUG
@@ -2477,7 +2502,7 @@ void processSoundCommand(SoundCommand soundCommand) {
 //       output += soundCommand;
 //       // output += " - Play Random Sentence.\r\n";
 // #endif
-//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)0, (int16_t)soundCommand);
 //       break;
 //     case '6':
 // #ifdef SHADOW_DEBUG
@@ -2485,7 +2510,7 @@ void processSoundCommand(SoundCommand soundCommand) {
 //       output += soundCommand;
 //       // output += " - Play Random Misc.\r\n";
 // #endif
-//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)0, (int16_t)soundCommand);
 //       break;
 //     case '7':
 // #ifdef SHADOW_DEBUG
@@ -2494,7 +2519,7 @@ void processSoundCommand(SoundCommand soundCommand) {
 //       output += " - Play Cantina Song.\r\n";
 // #endif
 //       // Play Cantina Song
-//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)0, (int16_t)soundCommand);
 //       break;
 //     case '8':
 // #ifdef SHADOW_DEBUG
@@ -2503,7 +2528,7 @@ void processSoundCommand(SoundCommand soundCommand) {
 //       output += " - Play Imperial March.\r\n";
 // #endif
 //       // Play Imperial March
-//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)0, (int16_t)soundCommand);
 //       break;
 //     case '9':
 // #ifdef SHADOW_DEBUG
@@ -2512,7 +2537,7 @@ void processSoundCommand(SoundCommand soundCommand) {
 //       output += " - Play Let It Go.\r\n";
 // #endif
 //       // Play Let It Go
-//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)0, (int16_t)soundCommand);
 //       break;
 //     case '0':
 // #ifdef SHADOW_DEBUG
@@ -2521,7 +2546,7 @@ void processSoundCommand(SoundCommand soundCommand) {
 //       output += " - Play Gangdum Style\r\n";
 // #endif
 //       // Play Gangnam Style
-//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)0, (int16_t)soundCommand);
 //       break;
 //     case 'A':
 // #ifdef SHADOW_DEBUG
@@ -2530,7 +2555,7 @@ void processSoundCommand(SoundCommand soundCommand) {
 //       output += " - Play Upset a Droid\r\n";
 // #endif
 //       // Play Upset a Droid
-//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)0, (int16_t)soundCommand);
 //       break;
 //     case 'B':
 // #ifdef SHADOW_DEBUG
@@ -2539,7 +2564,7 @@ void processSoundCommand(SoundCommand soundCommand) {
 //       output += " - Play Summer\r\n";
 // #endif
 //       // Play Summer
-//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)0, (int16_t)soundCommand);
 //       break;
 //     case 'C':
 // #ifdef SHADOW_DEBUG
@@ -2548,7 +2573,7 @@ void processSoundCommand(SoundCommand soundCommand) {
 //       output += " - Play Everything is Awesome\r\n";
 // #endif
 //       // Play Everything is Awesome
-//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)0, (int16_t)soundCommand);
 //       break;
 //     case 'D':
 // #ifdef SHADOW_DEBUG
@@ -2557,7 +2582,7 @@ void processSoundCommand(SoundCommand soundCommand) {
 //       output += " - Play What Does the Fox Say\r\n";
 // #endif
 //       // Play What Does the Fox Say
-//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+//       mp3_command(CMD_PLAY_W_INDEX, (int16_t)0, (int16_t)soundCommand);
 //       break;
     default:
       #ifdef SHADOW_DEBUG
@@ -2565,7 +2590,7 @@ void processSoundCommand(SoundCommand soundCommand) {
         output += soundCommand;
         output += "\r\n";
       #endif
-      mp3_command(CMD_PLAY_W_INDEX, (int16_t)soundCommand);
+      mp3_command(CMD_PLAY_W_INDEX,  (int16_t)0, (int16_t)soundCommand);
       break;
   }
 #endif
@@ -2749,19 +2774,22 @@ void soundControl() {
   #endif
 }  
 
-void mp3_command(int8_t command, int16_t dat) {
+void mp3_command(int8_t command, int16_t dat1, int16_t dat2) {
   int8_t frame[8] = { 0 };
   frame[0] = 0x7e;                // starting byte
   frame[1] = 0xff;                // version
   frame[2] = 0x06;                // the number of bytes of the command without starting byte and ending byte
   frame[3] = command;             //
   frame[4] = 0x00;                // 0x00 = no feedback, 0x01 = feedback
-  frame[5] = (int8_t)(dat >> 8);  // data high byte
-  frame[6] = (int8_t)(dat);       // data low byte
+  frame[5] = (int8_t)(dat1);      // data high byte
+  frame[6] = (int8_t)(dat2);      // data low byte
   frame[7] = 0xef;                // ending byte
   for (uint8_t i = 0; i < 8; i++) {
+    // Serial.print(frame[i]);
+    // Serial.print(" ");
     mp3.write(frame[i]);
   }
+  // Serial.print("\r\n");
 }
 // =======================================================================================
 // //////////////////////////END: Sound Functions/////////////////////////////////////////
