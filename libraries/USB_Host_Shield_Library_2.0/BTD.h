@@ -624,6 +624,7 @@ public:
          * @param funcOnInit Function to call.
          */
         void attachOnInit(void (*funcOnInit)(void)) {
+                Serial.println("in BTD.h attachOnInit()");
                 // Serial.print("Address of funcOnInit: 0x"); Serial.println((uint32_t)funcOnInit, HEX); 
                 pFuncOnInit = funcOnInit; // TODO: This really belong in a class of it's own as it is repeated several times
                 // Serial.print("Address of pFuncOnInit: 0x"); Serial.println((uint32_t)pFuncOnInit, HEX); 
