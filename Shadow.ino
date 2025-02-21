@@ -89,7 +89,8 @@
 #include <SyRenSimplified.h>
 #include <CytronMotorDriver.h>
 #include <Servo.h>
-#include <LedControl.h>
+// #include <LedControl.h>
+#include <Adafruit_NeoPixel.h>
 // #include <DomeCommandEnums.h>
 // Satisfy IDE, which only needs to see the include statment in the ino.
 // #ifdef dobogusinclude
@@ -212,6 +213,29 @@ int UtilArmTopPos = 0; // current top arm position
 
 bool isUtilArmTopOpen = false; // open = true, closed = false
 bool isUtilArmBottomOpen = false;
+
+// ---------------------------------------------------------------------------------------
+//                          Holoprojector Settings
+// ---------------------------------------------------------------------------------------
+#define NEO_PIXEL
+
+#ifdef NEO_PIXEL
+  #define PIN 6 // Which pin on the Arduino is connected to the NeoPixels?
+  #define NUMPIXELS 21 // Number of pixels in the ring
+  Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
+
+  // Color settings for pixels (R,G,B)
+  #define RED pixels.Color(255,0,0,0)
+  #define GREEN pixels.Color(0,255,0,0)
+  #define BLUE pixels.Color(0,0,255,0)
+  #define WHITE pixels.Color(0,0,0,255)
+  #define LIGHTBLUE pixels.Color(0,0,40,255)
+  #define PURPLE pixels.Color(255,255,0,0)
+  #define PINK pixels.Color(40,0,0,255)
+
+  int holoBrightness = 5; // Brightness of pixels
+  uint32_t holoColor = WHITE;
+#endif
 
 // ---------------------------------------------------------------------------------------
 //                          User Settings
@@ -399,7 +423,9 @@ enum DomeCommand { // all possible dome commands
   OVERLOAD,
   PANELWAVE,
   PANELDANCE,
-  TOGGLEMAGICPANEL
+  TOGGLEMAGICPANEL,
+  TOGGLEHOLOS,
+  CHANGEHOLOSCOLOR
 };
 
 // Configure enum int values to match the order of sounds on TF card
@@ -502,6 +528,11 @@ void setup() {
   //   Wire.begin();
   //   ET.begin(details(domeData), &Wire);
   // #endif
+
+  // // Turn on holos and set to default color
+  // pixels.begin();
+  // pixels.setBrightness(holoBrightness);
+  // pixels.fill(WHITE,0,NUMPIXELS);
 
   //Setup for Utility Arm Servo's    
   UtilArmTopServo.attach(UTILITY_ARM_TOP_PIN);  
@@ -1192,6 +1223,12 @@ void sendSerialDataToDome(DomeCommand cmdName) {
     case TOGGLEMAGICPANEL:
       serialCommand = "CMD:TOGGLEMAGICPANEL";
       break;
+    case TOGGLEHOLOS:
+      serialCommand = "CMD:TOGGLEHOLOS";
+      break;
+    case CHANGEHOLOSCOLOR:
+      serialCommand = "CMD:CHANGEHOLOSCOLOR" + holoColor;
+      break;
     default:
       Serial.println("This is not a dome command");
       executingCommand = false;
@@ -1478,13 +1515,13 @@ void ps3ToggleSettings(PS3BT* myPS3, int controllerNumber) {
         #ifdef SHADOW_DEBUG
           output += "Holos on\r\n";
         #endif
-        // TODO: turn holos on
+        holoLightsOn();
       }
       if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(DOWN)) {
         #ifdef SHADOW_DEBUG
           output += "Holos off\r\n";
         #endif
-        // TODO: turn holos off
+        holoLightsOff();
       }
       if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(RIGHT)) {
         #ifdef SHADOW_DEBUG
@@ -1673,14 +1710,16 @@ boolean adafruitPs3Holoprojector(PS3BT* myPS3, int controllerNumber) {
       #ifdef SHADOW_DEBUG      
         output += "Turning Off Holo Light\r\n";
       #endif
-      holoLightFrontStatus = HOLO_LED_OFF;
-      holoLightOff(HOLO_FRONT_RED_PWM_PIN, HOLO_FRONT_GREEN_PWM_PIN, HOLO_FRONT_BLUE_PWM_PIN);
+      // holoLightFrontStatus = HOLO_LED_OFF;
+      sendSerialDataToDome(TOGGLEHOLOS);
+      // holoLightsOff();
     } else {
       #ifdef SHADOW_DEBUG      
         output += "Turning On Holo Light\r\n";
       #endif
-      holoLightFrontStatus = HOLO_LED_ON;
-      holoLightOn(HOLO_FRONT_RED_PWM_PIN, HOLO_FRONT_GREEN_PWM_PIN, HOLO_FRONT_BLUE_PWM_PIN);
+      // holoLightFrontStatus = HOLO_LED_ON;
+      sendSerialDataToDome(TOGGLEHOLOS);
+      // holoLightsOn();
     }      
     return true;
   }
@@ -1884,16 +1923,13 @@ void holoLightFlicker(int pwmPINred, int pwmPINgreen, int pwmPINblue) {
   domePWM.setPWM(pwmPINblue, 0, random(4096));
 }
 
-void holoLightOff(int pwmPINred, int pwmPINgreen, int pwmPINblue) {
-  domePWM.setPWM(pwmPINred, 0, PWM_OFF);
-  domePWM.setPWM(pwmPINgreen, 0, PWM_OFF);
-  domePWM.setPWM(pwmPINblue, 0, PWM_OFF);
+void holoLightsOff() {
+  pixels.clear();
 }
 
-void holoLightOn(int pwmPINred, int pwmPINgreen, int pwmPINblue) {
-  domePWM.setPWM(pwmPINred, 0, 4094);
-  domePWM.setPWM(pwmPINgreen, 0, 4094);
-  domePWM.setPWM(pwmPINblue, 0, 4094);
+void holoLightsOn() {
+  pixels.fill(holoColor, 0, NUMPIXELS);
+  pixels.show();   // Send the updated pixel colors to the hardware.
 }
 
 void randomHoloMovement(int holoprojector) {
@@ -1916,14 +1952,14 @@ void randomHoloMovement(int holoprojector) {
           case 2:
           case 3:
               holoLightFrontStatus = HOLO_LED_OFF;
-              holoLightOff(HOLO_FRONT_RED_PWM_PIN, HOLO_FRONT_GREEN_PWM_PIN, HOLO_FRONT_BLUE_PWM_PIN);
+              holoLightsOff();
               break;
           case 4:
           case 5:
           case 6:
           case 7:
               holoLightFrontStatus = HOLO_LED_ON;
-              holoLightOn(HOLO_FRONT_RED_PWM_PIN, HOLO_FRONT_GREEN_PWM_PIN, HOLO_FRONT_BLUE_PWM_PIN);
+              holoLightsOn();
               break;
           default:
               holoLightFrontStatus = HOLO_LED_FLICKER;
@@ -1950,14 +1986,14 @@ void randomHoloMovement(int holoprojector) {
           case 3:
           case 4:
             holoLightBackStatus = HOLO_LED_OFF;
-            holoLightOff(HOLO_BACK_RED_PWM_PIN, HOLO_BACK_GREEN_PWM_PIN, HOLO_BACK_BLUE_PWM_PIN);
+            holoLightsOff();
             break;
           case 5:
           case 6:
           case 7:
           case 8:
             holoLightBackStatus = HOLO_LED_ON;
-            holoLightOn(HOLO_BACK_RED_PWM_PIN, HOLO_BACK_GREEN_PWM_PIN, HOLO_BACK_BLUE_PWM_PIN);
+            holoLightsOn();
             break;
           default:
             holoLightBackStatus = HOLO_LED_FLICKER;
@@ -1985,13 +2021,13 @@ void randomHoloMovement(int holoprojector) {
           case 4:
           case 5:
             holoLightTopStatus = HOLO_LED_OFF;
-            holoLightOff(HOLO_TOP_RED_PWM_PIN, HOLO_TOP_GREEN_PWM_PIN, HOLO_TOP_BLUE_PWM_PIN);
+            holoLightsOff();
             break;
           case 6:
           case 7:
           case 8:
             holoLightTopStatus = HOLO_LED_ON;
-            holoLightOn(HOLO_TOP_RED_PWM_PIN, HOLO_TOP_GREEN_PWM_PIN, HOLO_TOP_BLUE_PWM_PIN);
+            holoLightsOn();
             break;
           default:
             holoLightTopStatus = HOLO_LED_FLICKER;
