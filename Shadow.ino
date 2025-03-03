@@ -93,9 +93,9 @@
 #include <Adafruit_NeoPixel.h>
 // #include <DomeCommandEnums.h>
 // Satisfy IDE, which only needs to see the include statment in the ino.
-// #ifdef dobogusinclude
-//   #include <spi4teensy3.h>
-// #endif
+#ifdef dobogusinclude
+  #include <spi4teensy3.h>
+#endif
 
 // #ifdef DOME_SERIAL_TEECES
 //   #include <EasyTransfer.h>
@@ -292,8 +292,8 @@ int serialLatency = 25;   //This is a delay factor in ms to prevent queueing of 
                           //25ms seems appropriate for HardwareSerial, values of 50ms or larger are needed for Softare Emulation
 
 #if FOOT_CONTROLLER == 3
-  CytronMD footMotorLeft(PWM_DIR, 4, 5);  // PWM 1 = Pin 4 (IN1), DIR 1 = Pin 5 (AN1)
-  CytronMD footMotorRight(PWM_DIR, 7, 6); // PWM 2 = Pin 7 (IN2), DIR 2 = Pin 6 (AN2)
+  CytronMD footMotorLeft(PWM_DIR,4,5);  // PWM 1 = Pin 4 (IN1), DIR 1 = Pin 5 (AN1)
+  CytronMD footMotorRight(PWM_DIR,7,6); // PWM 2 = Pin 7 (IN2), DIR 2 = Pin 6 (AN2)
 #endif
 Sabertooth *SyR = new Sabertooth(SYREN_ADDR, Serial2); // declare Syren object
 
@@ -511,9 +511,9 @@ void setup() {
   stopFeet();
 
   //Setup for Serial3 - Dome Communication
-  Serial3.begin(domeCommunicationBaudRate);
-  while (!Serial3); // wait for Serial3 to start
-  Serial.println(("Serial3 started for DOME COMMUNICATION"));
+  // Serial3.begin(domeCommunicationBaudRate);
+  // while (!Serial3); // wait for Serial3 to start
+  // Serial.println(("Serial3 started for DOME COMMUNICATION"));
 
   #ifdef DOME_I2C_ADAFRUIT           
       domePWM.begin();
@@ -530,9 +530,9 @@ void setup() {
   // #endif
 
   // // Turn on holos and set to default color
-  // pixels.begin();
-  // pixels.setBrightness(holoBrightness);
-  // pixels.fill(WHITE,0,NUMPIXELS);
+  pixels.begin();
+  pixels.setBrightness(holoBrightness);
+  pixels.fill(WHITE,0,NUMPIXELS);
 
   //Setup for Utility Arm Servo's    
   UtilArmTopServo.attach(UTILITY_ARM_TOP_PIN);  
@@ -550,12 +550,12 @@ void loop() {
   #endif
   
   //TODO: this block if for testing, remove
-  for (int i = 1; i <= 16; i++) {
-    Serial.print("Playing sound - ");
-    Serial.println(i);
-    mp3_command(CMD_PLAY_W_INDEX, 0, i);
-    delay(5000);
-  }
+  // for (int i = 1; i <= 16; i++) {
+  //   Serial.print("Playing sound - ");
+  //   Serial.println(i);
+  //   mp3_command(CMD_PLAY_W_INDEX, 0, i);
+  //   delay(5000);
+  // }
 
   if ( !readUSB() ) {
     //We have a fault condition that we want to ensure that we do NOT process any controller data!!!
