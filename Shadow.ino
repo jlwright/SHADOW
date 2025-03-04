@@ -192,7 +192,7 @@ SoftwareSerial mp3(ARDUINO_RX, ARDUINO_TX); // Serial1 (RX, TX)
 //                          Dome Control System
 // ---------------------------------------------------------------------------------------
 //Uncomment one line based on your Dome Control
-#define DOME_I2C_ADAFRUIT       //Current SHADOW configuration used with R-Series Logics
+// #define DOME_I2C_ADAFRUIT       //Current SHADOW configuration used with R-Series Logics
 //#define DOME_SERIAL_TEECES    //Original system tested with SHADOW
 //#define DOME_I2C_TEECES       //Untested Nov 2014
 
@@ -222,8 +222,7 @@ bool isUtilArmBottomOpen = false;
 #ifdef NEO_PIXEL
   #define PIN 6 // Which pin on the Arduino is connected to the NeoPixels?
   #define NUMPIXELS 21 // Number of pixels in the ring
-  Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
-
+  
   // Color settings for pixels (R,G,B)
   #define RED pixels.Color(255,0,0,0)
   #define GREEN pixels.Color(0,255,0,0)
@@ -233,6 +232,7 @@ bool isUtilArmBottomOpen = false;
   #define PURPLE pixels.Color(255,255,0,0)
   #define PINK pixels.Color(40,0,0,255)
 
+  Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
   int holoBrightness = 5; // Brightness of pixels
   uint32_t holoColor = WHITE;
 #endif
@@ -320,59 +320,59 @@ Sabertooth *SyR = new Sabertooth(SYREN_ADDR, Serial2); // declare Syren object
 // #endif 
 
 //TODO: modify this for pixel setup
-#ifdef DOME_I2C_ADAFRUIT    
-  const int HOLO_FRONT = 1;
-  const int HOLO_BACK = 2;
-  const int HOLO_TOP = 3;
-  
-  const int HOLO_DELAY = 20000; //up to 20 second delay
-  const int PWM_OFF = 4095;  //setting from Adafruit
-  
-  const int HOLO_FRONT_RED_PWM_PIN     = 0;
-  const int HOLO_FRONT_GREEN_PWM_PIN   = 1;
-  const int HOLO_FRONT_BLUE_PWM_PIN    = 2;
-  const int HOLO_FRONT_X_PWM_PIN       = 3;
-  const int HOLO_FRONT_Y_PWM_PIN       = 4;
-  const int HOLO_BACK_RED_PWM_PIN      = 5;
-  const int HOLO_BACK_GREEN_PWM_PIN    = 6;
-  const int HOLO_BACK_BLUE_PWM_PIN     = 7;
-  const int HOLO_BACK_X_PWM_PIN        = 8;
-  const int HOLO_BACK_Y_PWM_PIN        = 9;
-  const int HOLO_TOP_X_PWM_PIN        = 10;
-  const int HOLO_TOP_Y_PWM_PIN        = 11;
-  const int HOLO_TOP_RED_PWM_PIN      = 12;
-  const int HOLO_TOP_GREEN_PWM_PIN    = 13;
-  const int HOLO_TOP_BLUE_PWM_PIN     = 14;
-
-  const int HOLO_SERVO_CTR = 300;
-
-  const int HOLO_FRONT_X_SERVO_MIN = 265; //250; //150;  // Issues with resin holo...
-  const int HOLO_FRONT_X_SERVO_MAX = 315; //350; //600;  // Issues with resin holo...
-  const int HOLO_FRONT_Y_SERVO_MIN = 250; //200; //150;  // Issues with resin holo...
-  const int HOLO_FRONT_Y_SERVO_MAX = 330; //400; //600;  // Issues with resin holo...
-  
-  const int HOLO_BACK_X_SERVO_MIN = 275; //250; //150;
-  const int HOLO_BACK_X_SERVO_MAX = 325; //350; //600; 
-  const int HOLO_BACK_Y_SERVO_MIN = 250; //200; //150;
-  const int HOLO_BACK_Y_SERVO_MAX = 350; //400; //600; 
-  
-  const int HOLO_TOP_X_SERVO_MIN = 275; //250; //150;
-  const int HOLO_TOP_X_SERVO_MAX = 325; //350; //600; 
-  const int HOLO_TOP_Y_SERVO_MIN = 250; //200; //150;
-  const int HOLO_TOP_Y_SERVO_MAX = 350; //400; //600; 
-  
-  const int HOLO_LED_OFF = 0;
-  const int HOLO_LED_ON = 1;
-  const int HOLO_LED_FLICKER = 2;    
-  int holoLightFrontStatus = 0;
-  int holoLightBackStatus = 0;
-  int holoLightTopStatus = 0;
-  
-  uint32_t holoFrontRandomTime = 0;
-  uint32_t holoBackRandomTime = 0;
-  uint32_t holoTopRandomTime = 0;
-  Adafruit_PWMServoDriver domePWM = Adafruit_PWMServoDriver();
-#endif
+// #ifdef DOME_I2C_ADAFRUIT    
+//   const int HOLO_FRONT = 1;
+//   const int HOLO_BACK = 2;
+//   const int HOLO_TOP = 3;
+//  
+//   const int HOLO_DELAY = 20000; //up to 20 second delay
+//   const int PWM_OFF = 4095;  //setting from Adafruit
+//  
+//   const int HOLO_FRONT_RED_PWM_PIN     = 0;
+//   const int HOLO_FRONT_GREEN_PWM_PIN   = 1;
+//   const int HOLO_FRONT_BLUE_PWM_PIN    = 2;
+//   const int HOLO_FRONT_X_PWM_PIN       = 3;
+//   const int HOLO_FRONT_Y_PWM_PIN       = 4;
+//   const int HOLO_BACK_RED_PWM_PIN      = 5;
+//   const int HOLO_BACK_GREEN_PWM_PIN    = 6;
+//   const int HOLO_BACK_BLUE_PWM_PIN     = 7;
+//   const int HOLO_BACK_X_PWM_PIN        = 8;
+//   const int HOLO_BACK_Y_PWM_PIN        = 9;
+//   const int HOLO_TOP_X_PWM_PIN        = 10;
+//   const int HOLO_TOP_Y_PWM_PIN        = 11;
+//   const int HOLO_TOP_RED_PWM_PIN      = 12;
+//   const int HOLO_TOP_GREEN_PWM_PIN    = 13;
+//   const int HOLO_TOP_BLUE_PWM_PIN     = 14;
+//
+//   const int HOLO_SERVO_CTR = 300;
+//
+//   const int HOLO_FRONT_X_SERVO_MIN = 265; //250; //150;  // Issues with resin holo...
+//   const int HOLO_FRONT_X_SERVO_MAX = 315; //350; //600;  // Issues with resin holo...
+//   const int HOLO_FRONT_Y_SERVO_MIN = 250; //200; //150;  // Issues with resin holo...
+//   const int HOLO_FRONT_Y_SERVO_MAX = 330; //400; //600;  // Issues with resin holo...
+//  
+//   const int HOLO_BACK_X_SERVO_MIN = 275; //250; //150;
+//   const int HOLO_BACK_X_SERVO_MAX = 325; //350; //600; 
+//   const int HOLO_BACK_Y_SERVO_MIN = 250; //200; //150;
+//   const int HOLO_BACK_Y_SERVO_MAX = 350; //400; //600; 
+//  
+//   const int HOLO_TOP_X_SERVO_MIN = 275; //250; //150;
+//   const int HOLO_TOP_X_SERVO_MAX = 325; //350; //600; 
+//   const int HOLO_TOP_Y_SERVO_MIN = 250; //200; //150;
+//   const int HOLO_TOP_Y_SERVO_MAX = 350; //400; //600; 
+//  
+//   const int HOLO_LED_OFF = 0;
+//   const int HOLO_LED_ON = 1;
+//   const int HOLO_LED_FLICKER = 2;    
+//   int holoLightFrontStatus = 0;
+//   int holoLightBackStatus = 0;
+//   int holoLightTopStatus = 0;
+//  
+//   uint32_t holoFrontRandomTime = 0;
+//   uint32_t holoBackRandomTime = 0;
+//   uint32_t holoTopRandomTime = 0;
+//   Adafruit_PWMServoDriver domePWM = Adafruit_PWMServoDriver();
+// #endif
 
 ///////Setup for USB and Bluetooth Devices////////////////////////////
 USB Usb;
@@ -399,14 +399,12 @@ boolean isFootMotorStopped = true;
 boolean isDomeMotorStopped = true;
 boolean isPS3NavigatonInitialized = false;
 boolean isSecondaryPS3NavigatonInitialized = false;
-
-byte vol = 20; // default volume, 0 = off, 30 = max
 boolean isDriveStickEnabled = true;
 boolean isDomeStickEnabled = true;
+byte vol = 20; // default volume, 0 = off, 30 = max
 
 // Dome Automation Variables
-boolean domeAutomation = false;
-byte isAutomateDomeOn = false;
+boolean isAutomateDomeOn = false;
 int domeTurnDirection = 1;  // 1 = positive turn, -1 negative turn
 float domeTargetPosition = 0; // (0 - 359) - degrees in a circle, 0 = home
 unsigned long domeStopTurnTime = 0;    // millis() when next turn should stop
@@ -425,20 +423,29 @@ enum DomeCommand { // all possible dome commands
   PANELDANCE,
   TOGGLEMAGICPANEL,
   TOGGLEHOLOS,
+  TOGGLEHOLOAUTOMATION,
   CHANGEHOLOSCOLOR
 };
 
 // Configure enum int values to match the order of sounds on TF card
 enum SoundCommand {
-  SOUND_ON = 96,
-  SOUND_OFF = 97,
-  VOL_UP = 98,
-  VOL_DOWN = 99,
   STOP_SOUND = 100,
   WHISTLE = 1,
   BEEP = 2,
   CHORTLE = 3,
-  RAZZ = 4
+  RAZZ = 4,
+  FIVE = 5,
+  SIX = 6,
+  SEVEN = 7,
+  EIGHT = 8,
+  NINE = 9,
+  TEN = 10,
+  ELEVEN = 11,
+  TWELVE = 12,
+  SOUND_ON = 96,
+  SOUND_OFF = 97,
+  VOL_UP = 98,
+  VOL_DOWN = 99
 };
 
 byte action = 0;
@@ -515,25 +522,6 @@ void setup() {
   // while (!Serial3); // wait for Serial3 to start
   // Serial.println(("Serial3 started for DOME COMMUNICATION"));
 
-  #ifdef DOME_I2C_ADAFRUIT           
-      domePWM.begin();
-      domePWM.setPWMFreq(50);  // Analog servos run at ~50 Hz updates
-  #endif
-  // #ifdef DOME_SERIAL_TEECES
-  //   //Setup for Serial3:: Dome Communication Link   
-  //   Serial3.begin(57600);//start the library, pass in the data details and the name of the serial port.
-  //   ET.begin(details(domeData), &Serial3);
-  // #endif
-  // #ifdef DOME_I2C_TEECES    
-  //   Wire.begin();
-  //   ET.begin(details(domeData), &Wire);
-  // #endif
-
-  // // Turn on holos and set to default color
-  pixels.begin();
-  pixels.setBrightness(holoBrightness);
-  pixels.fill(WHITE,0,NUMPIXELS);
-
   //Setup for Utility Arm Servo's    
   UtilArmTopServo.attach(UTILITY_ARM_TOP_PIN);  
   UtilArmBottomServo.attach(UTILITY_ARM_BOTTOM_PIN);
@@ -561,7 +549,6 @@ void loop() {
     //We have a fault condition that we want to ensure that we do NOT process any controller data!!!
     return;
   }
-
   //LOOP through functions from highest to lowest priority.
   footMotorDrive();
   if ( !readUSB() ) {
@@ -572,7 +559,7 @@ void loop() {
   domeDrive();
   domeCommand();
   utilityArms();
-  holoprojector();
+  // holoprojector();
   toggleSettings();
   soundControl();
   // flashCoinSlotLEDs();
@@ -1130,16 +1117,6 @@ int ps3DomeDrive(PS3BT* myPS3, int controllerNumber)
           if ( abs(joystickPosition-128) < joystickDomeDeadZoneRange ) {
             domeRotationSpeed = 0;
           }
-          //TODO: Turn off dome automation if manually moved
-          // if (domeRotationSpeed != 0 && isAutomateDomeOn == true) {   
-          //   isAutomateDomeOn = false; 
-          //   domeStatus = 0;
-          //   domeTargetPosition = 0; 
-            
-          //   #ifdef SHADOW_DEBUG
-          //     output += "Dome Automation OFF\r\n";
-          //   #endif
-          // }
         }
       break;
     }
@@ -1226,6 +1203,9 @@ void sendSerialDataToDome(DomeCommand cmdName) {
     case TOGGLEHOLOS:
       serialCommand = "CMD:TOGGLEHOLOS";
       break;
+    case TOGGLEHOLOAUTOMATION:
+      serialCommand = "CMD:TOGGLEHOLOAUTOMATION";
+      break;
     case CHANGEHOLOSCOLOR:
       serialCommand = "CMD:CHANGEHOLOSCOLOR" + holoColor;
       break;
@@ -1275,73 +1255,72 @@ void ps3DomeCommand(PS3BT* myPS3, int controllerNumber) {
     case 2:
       if (!(myPS3->getButtonPress(L1) || myPS3->getButtonPress(L2) || myPS3->getButtonPress(PS))) {
         if (myPS3->getButtonClick(UP)) {
-#ifdef SHADOW_DEBUG
-          Serial.println("Right controller: UP");
-#endif
+          #ifdef SHADOW_DEBUG
+            Serial.println("Right controller: UP");
+          #endif
           sendSerialDataToDome(PERISCOPE);
         } else if (myPS3->getButtonClick(RIGHT)) {
-#ifdef SHADOW_DEBUG
-          Serial.println("Right controller: RIGHT");
-#endif
+          #ifdef SHADOW_DEBUG
+            Serial.println("Right controller: RIGHT");
+          #endif
           sendSerialDataToDome(LIFEFORMSCANNER);
         } else if (myPS3->getButtonClick(DOWN)) {
-#ifdef SHADOW_DEBUG
-          Serial.println("Right controller: DOWN");
-#endif
+          #ifdef SHADOW_DEBUG
+            Serial.println("Right controller: DOWN");
+          #endif
           sendSerialDataToDome(ZAPPER);
         } else if (myPS3->getButtonClick(LEFT)) {
-#ifdef SHADOW_DEBUG
-          Serial.println("Right controller: LEFT");
-#endif
+          #ifdef SHADOW_DEBUG
+            Serial.println("Right controller: LEFT");
+          #endif
           sendSerialDataToDome(BADMOTIVATOR);
         }
       } else if (myPS3->getButtonPress(L1)) {
         if (myPS3->getButtonClick(UP)) {
-#ifdef SHADOW_DEBUG
-          Serial.println("Right controller: L1 + UP");
-#endif
+          #ifdef SHADOW_DEBUG
+            Serial.println("Right controller: L1 + UP");
+          #endif
           sendSerialDataToDome(LIGHTSABER);
         } else if (myPS3->getButtonClick(RIGHT)) {
-#ifdef SHADOW_DEBUG
-          Serial.println("Right controller: L1 + RIGHT");
-#endif
+          #ifdef SHADOW_DEBUG
+            Serial.println("Right controller: L1 + RIGHT");
+          #endif
           sendSerialDataToDome(OVERLOAD);
         } else if (myPS3->getButtonClick(DOWN)) {
-#ifdef SHADOW_DEBUG
-          Serial.println("Right controller: L1 + DOWN");
-#endif
+          #ifdef SHADOW_DEBUG
+            Serial.println("Right controller: L1 + DOWN");
+          #endif
           sendSerialDataToDome(PANELWAVE);
         } else if (myPS3->getButtonClick(LEFT)) {
-#ifdef SHADOW_DEBUG
-          Serial.println("Right controller: L1 + LEFT");
-#endif
+          #ifdef SHADOW_DEBUG
+            Serial.println("Right controller: L1 + LEFT");
+          #endif
           sendSerialDataToDome(PANELDANCE);
         }
       } else if (myPS3->getButtonPress(L2)) {
-        if (myPS3->getButtonClick(UP)) {
-#ifdef SHADOW_DEBUG
-          Serial.println("Right controller: L2 + UP");
-#endif
-          sendSerialDataToDome(TOGGLEMAGICPANEL);
+        // if (myPS3->getButtonClick(UP)) {
+        //   #ifdef SHADOW_DEBUG
+        //     Serial.println("Right controller: L2 + UP");
+        //   #endif
+        //   sendSerialDataToDome(TOGGLEMAGICPANEL);
 //         } else if (myPS3->getButtonClick(RIGHT)) {
-// #ifdef SHADOW_DEBUG
-//           Serial.println("Right controller: L2 + RIGHT");
-// #endif
+//           #ifdef SHADOW_DEBUG
+//             Serial.println("Right controller: L2 + RIGHT");
+//           #endif
 //           sendSerialDataToDome(TOGGLEHOLOS);
 //         } else if (myPS3->getButtonClick(DOWN)) {
-// #ifdef SHADOW_DEBUG
-//           Serial.println("Right controller: L2 + DOWN");
-// #endif
+//           #ifdef SHADOW_DEBUG
+//             Serial.println("Right controller: L2 + DOWN");
+//           #endif
 //           sendSerialDataToDome(10);
 //         } else if (myPS3->getButtonClick(LEFT)) {
-// #ifdef SHADOW_DEBUG
-//           Serial.println("Right controller: L2 + LEFT");
-// #endif
+//           #ifdef SHADOW_DEBUG
+//            Serial.println("Right controller: L2 + LEFT");
+//           #endif
 //           sendSerialDataToDome(11);
 //         }
       }
       break;
-    }
   }
 }
 
@@ -1373,7 +1352,6 @@ void automateDome() {
         domeStartTurnTime = millis() + (random(3, 10) * 1000);
         rndNum = random(5,354);
         domeTargetPosition = rndNum;  // set the target position to a random degree of a 360 circle - shaving off the first and last 5 degrees
-        
         if (domeTargetPosition < 180) { // Turn the dome in the positive direction
           domeTurnDirection = 1;
           domeStopTurnTime = domeStartTurnTime + ((domeTargetPosition / 360) * time360DomeTurnRight);
@@ -1383,7 +1361,6 @@ void automateDome() {
         }
       } else { // Dome is not in the home position - send it back to home
         domeStartTurnTime = millis() + (random(3, 10) * 1000);
-
         if (domeTargetPosition < 180) {
           domeTurnDirection = -1;
           domeStopTurnTime = domeStartTurnTime + ((domeTargetPosition / 360) * time360DomeTurnLeft);
@@ -1393,9 +1370,7 @@ void automateDome() {
         }
         domeTargetPosition = 0;
       }
-      
       domeStatus = 1;  // Set dome status to preparing for a future turn
-        
       #ifdef SHADOW_DEBUG
         output += "Dome Automation: Initial Turn Set\r\n";
         output +=  "Current Time: ";
@@ -1411,29 +1386,24 @@ void automateDome() {
         output += "\r\n";          
       #endif
     }
-    
     if (domeStatus == 1) { // Dome is prepared for a future move - start the turn when ready
       if (domeStartTurnTime < millis()) {
         domeStatus = 2; 
-
         #ifdef SHADOW_DEBUG
           output += "Dome Automation: Ready To Start Turn\r\n";
         #endif
       }
     }
-
     if (domeStatus == 2) { // Dome is now actively turning until it reaches its stop time
       if (domeStopTurnTime > millis()) {
         domeSpeed = domeAutoSpeed * domeTurnDirection;
         SyR->motor(domeSpeed);
-        
         #ifdef SHADOW_DEBUG
           output += "Turning Now!!\r\n";
         #endif
       } else { // turn completed - stop the motor
         domeStatus = 0;
         SyR->stop();
-
         #ifdef SHADOW_DEBUG
           output += "STOP TURN!!\r\n";
         #endif
@@ -1513,61 +1483,27 @@ void ps3ToggleSettings(PS3BT* myPS3, int controllerNumber) {
       }
       if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(UP)) {
         #ifdef SHADOW_DEBUG
-          output += "Holos on\r\n";
+          output += "Toggle Holo lights on/off\r\n";
         #endif
-        holoLightsOn();
+        sendSerialDataToDome(TOGGLEHOLOS);
       }
       if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(DOWN)) {
         #ifdef SHADOW_DEBUG
-          output += "Holos off\r\n";
+          output += "Toggle Dome automation on/off\r\n";
         #endif
-        holoLightsOff();
+        sendSerialDataToDome(TOGGLEDOMEAUTOMATION);
       }
       if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(RIGHT)) {
         #ifdef SHADOW_DEBUG
-          output += "Holo auto movement on\r\n";
+          output += "Toggle Holo auto movement on/off\r\n";
         #endif
-        // TODO: enable holo auto movement
-
-        // #ifdef SHADOW_DEBUG
-        //   output += "Enabling the Holo Automation\r\n";
-        // #endif
-        // // Turn On HP Automation
-        // domeData.hpa = 1;
-        // domeData.dsp = 100;
-        // ET.sendData();
+        sendSerialDataToDome(TOGGLEHOLOAUTOMATION);
       }
       if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(LEFT)) {
         #ifdef SHADOW_DEBUG
-          output += "Holo auto movement off\r\n";
+          output += "Toggle Magic Panel on/off\r\n";
         #endif
-        // TODO: disable holo auto movement
-
-        // #ifdef SHADOW_DEBUG
-        //   output += "Disabling the Holo Automation\r\n";
-        // #endif
-        // //Turn Off HP Automation
-        // domeData.hpa = 0;
-        // domeData.dsp = 100;
-        // ET.sendData();
-      }
-      if(myPS3->getButtonPress(L2)&&myPS3->getButtonClick(CROSS)) {
-        if(isAutomateDomeOn) {
-          #ifdef SHADOW_DEBUG
-            output += "Disabling the Dome Automation\r\n";        
-          #endif
-          isAutomateDomeOn = false;
-          domeStatus = 0;
-          domeTargetPosition = 0;
-          SyR->stop();
-          action = 0;
-        }
-      }
-      if(myPS3->getButtonPress(L2)&&myPS3->getButtonClick(CIRCLE)) {
-        #ifdef SHADOW_DEBUG
-          output += "Enabling the Dome Automation\r\n";
-        #endif
-        isAutomateDomeOn = true;
+        sendSerialDataToDome(TOGGLEMAGICPANEL);
       }
     break;
   }
@@ -1701,364 +1637,367 @@ void moveUtilArm(int arm, int position) {
 // =======================================================================================
 // //////////////////////////Holo Functions///////////////////////////////////////////////
 // =======================================================================================
-#ifdef DOME_I2C_ADAFRUIT           
-boolean adafruitPs3Holoprojector(PS3BT* myPS3, int controllerNumber) {
-  // TODO: add switch for controllerNumber
-  // turn hp light on & off
-  if( !(myPS3->getButtonPress(PS)) && myPS3->getButtonClick(L3)) {
-    if (holoLightFrontStatus != HOLO_LED_OFF) {
-      #ifdef SHADOW_DEBUG      
-        output += "Turning Off Holo Light\r\n";
-      #endif
-      // holoLightFrontStatus = HOLO_LED_OFF;
-      sendSerialDataToDome(TOGGLEHOLOS);
-      // holoLightsOff();
-    } else {
-      #ifdef SHADOW_DEBUG      
-        output += "Turning On Holo Light\r\n";
-      #endif
-      // holoLightFrontStatus = HOLO_LED_ON;
-      sendSerialDataToDome(TOGGLEHOLOS);
-      // holoLightsOn();
-    }      
-    return true;
-  }
-
-/////hp movement
-  // if (myPS3->getButtonPress(PS)) {
-  //     if(myPS3->getButtonPress(UP)) {
-  //       #ifdef SHADOW_DEBUG
-  //         output += "Move Holo Up\r\n";
-  //       #endif
-  //       moveHoloServo(HOLO_FRONT_Y_PWM_PIN, HOLO_FRONT_Y_SERVO_MAX);
-  //     }
-  //     if(myPS3->getButtonPress(DOWN)) {
-  //       #ifdef SHADOW_DEBUG
-  //         output += "Move Holo Down\r\n";
-  //       #endif
-  //       moveHoloServo(HOLO_FRONT_Y_PWM_PIN, HOLO_FRONT_Y_SERVO_MIN);
-  //     }
-  //     if(myPS3->getButtonPress(LEFT)) {
-  //       #ifdef SHADOW_DEBUG
-  //         output += "Move Holo Left\r\n";
-  //       #endif
-  //       moveHoloServo(HOLO_FRONT_X_PWM_PIN, HOLO_FRONT_X_SERVO_MAX );
-  //     }
-  //     if(myPS3->getButtonPress(RIGHT)) {
-  //       #ifdef SHADOW_DEBUG
-  //         output += "Move Holo Right\r\n";
-  //       #endif
-  //       moveHoloServo(HOLO_FRONT_X_PWM_PIN, HOLO_FRONT_X_SERVO_MIN);
-  //     }
-  //     if (!(myPS3->getButtonPress(UP)||myPS3->getButtonPress(DOWN))) {
-  //       moveHoloServo(HOLO_FRONT_Y_PWM_PIN, HOLO_SERVO_CTR);
-  //     }
-  //     if (!(myPS3->getButtonPress(RIGHT)||myPS3->getButtonPress(LEFT))) {
-  //       moveHoloServo(HOLO_FRONT_X_PWM_PIN, HOLO_SERVO_CTR);
-  //     }
-  //   return true;
-  // }
-  // if (myPS3->getButtonPress(L1) && controllerNumber == 2) {
-  //   //TODO:  Analog stick - can we granually control holo?
-  //   if(myPS3->getAnalogHat(LeftHatY) < 50) {
-  //     output += "Move Holo Up\r\n";
-  //     moveHoloServo(HOLO_FRONT_Y_PWM_PIN, HOLO_FRONT_Y_SERVO_MAX);
-  //   }        
-  //   if(myPS3->getAnalogHat(LeftHatY) > 200) {
-  //     output += "Move Holo Down\r\n";
-  //     moveHoloServo(HOLO_FRONT_Y_PWM_PIN, HOLO_FRONT_Y_SERVO_MIN);
-  //   }
-  //   if(myPS3->getAnalogHat(LeftHatX) < 50) {
-  //     output += "Move Holo Left\r\n";
-  //     moveHoloServo(HOLO_FRONT_X_PWM_PIN, HOLO_FRONT_X_SERVO_MAX);
-  //   }
-  //   if(myPS3->getAnalogHat(LeftHatX) > 200) {
-  //     output += "Move Holo Right\r\n";
-  //     moveHoloServo(HOLO_FRONT_X_PWM_PIN, HOLO_FRONT_X_SERVO_MIN);
-  //   }
-  //   if (!(myPS3->getAnalogHat(LeftHatY) < 50||myPS3->getAnalogHat(LeftHatY) > 200)) {
-  //     //output += "Move Holo V-Center\r\n";
-  //     moveHoloServo(HOLO_FRONT_Y_PWM_PIN, HOLO_SERVO_CTR);
-  //   }
-  //   if (!(myPS3->getAnalogHat(LeftHatX) < 50||myPS3->getAnalogHat(LeftHatX) > 200)) {
-  //     //output += "Move Holo H-Center\r\n";
-  //     moveHoloServo(HOLO_FRONT_X_PWM_PIN, HOLO_SERVO_CTR);
-  //   }
-  //   return true;        
-  // }
-  return false;
-}
-#endif
-  
-// #if defined(DOME_SERIAL_TEECES) || defined(DOME_I2C_TEECES)
-// boolean teecesPs3Holoprojector(PS3BT *myPS3, int controllerNumber) {
-//   ////turn hp light on & off
-//   if (!(myPS3->getButtonPress(PS)) && myPS3->getButtonClick(L3)) {
-//     if (domeData.hpl == 1) {
-// #ifdef SHADOW_DEBUG
-//       output += "Turning Off Holo Light\r\n";
-// #endif
-//       domeData.hpl = 0; // if hp light is on, turn it off
-//       domeData.dsp = 100;
-//       ET.sendData();
+// #ifdef DOME_I2C_ADAFRUIT           
+// boolean adafruitPs3Holoprojector(PS3BT* myPS3, int controllerNumber) {
+//   // TODO: add switch for controllerNumber
+//   // turn hp light on & off
+//   if( !(myPS3->getButtonPress(PS)) && myPS3->getButtonClick(L3)) {
+//     if (holoLightFrontStatus != HOLO_LED_OFF) {
+//       #ifdef SHADOW_DEBUG      
+//         output += "Turning Off Holo Light\r\n";
+//       #endif
+//       // holoLightFrontStatus = HOLO_LED_OFF;
+//       sendSerialDataToDome(TOGGLEHOLOS);
+//       // holoLightsOff();
 //     } else {
-// #ifdef SHADOW_DEBUG
-//       output += "Turning On Holo Light\r\n";
-// #endif
-//       domeData.hpl = 1; // turn hp light on
-//       domeData.dsp = 100;
-//       ET.sendData();
-//     }
+//       #ifdef SHADOW_DEBUG      
+//         output += "Turning On Holo Light\r\n";
+//       #endif
+//       // holoLightFrontStatus = HOLO_LED_ON;
+//       sendSerialDataToDome(TOGGLEHOLOS);
+//       // holoLightsOn();
+//     }      
 //     return true;
 //   }
-//
-/////hp movement
-//   if (myPS3->getButtonPress(PS)) {
-//     if (myPS3->getButtonPress(UP)) {
-// #ifdef SHADOW_DEBUG
-//       output += "Move Holo Up\r\n";
-// #endif
-//       domeData.hpy = 150;
-//       domeData.dsp = 100;
-//       ET.sendData();
-//     }
-//     if (myPS3->getButtonPress(DOWN)) {
-// #ifdef SHADOW_DEBUG
-//       output += "Move Holo Down\r\n";
-// #endif
-//       domeData.hpy = 30;
-//       domeData.dsp = 100;
-//       ET.sendData();
-//     }
-//     if (myPS3->getButtonPress(LEFT)) {
-// #ifdef SHADOW_DEBUG
-//       output += "Move Holo Left\r\n";
-// #endif
-//       domeData.hpx = 30;
-//       domeData.dsp = 100;
-//       ET.sendData();
-//     }
-//     if (myPS3->getButtonPress(RIGHT)) {
-// #ifdef SHADOW_DEBUG
-//       output += "Move Holo Right\r\n";
-// #endif
-//       domeData.hpx = 150;
-//       domeData.dsp = 100;
-//       ET.sendData();
-//     }
-//     if (!(myPS3->getButtonPress(UP) || myPS3->getButtonPress(DOWN))) {
-//       domeData.hpy = 0;
-//       domeData.dsp = 100;
-//       ET.sendData();
-//     }
-//     if (!(myPS3->getButtonPress(RIGHT) || myPS3->getButtonPress(LEFT))) {
-//       domeData.hpx = 0;
-//       domeData.dsp = 100;
-//       ET.sendData();
-//     }
-//     return true;
-//   }
-//   if (myPS3->getButtonPress(L1) && controllerNumber == 2) {
-//     // TODO:  Analog stick - can we granually control holo?
-//     if (myPS3->getAnalogHat(LeftHatY) < 50) {
-//       output += "Move Holo Up\r\n";
-//       domeData.hpy = 30;
-//       domeData.dsp = 100;
-//       ET.sendData();
-//     }
-//     if (myPS3->getAnalogHat(LeftHatY) > 200) {
-//       output += "Move Holo Down\r\n";
-//       domeData.hpy = 150;
-//       domeData.dsp = 100;
-//       ET.sendData();
-//     }
-//     if (myPS3->getAnalogHat(LeftHatX) < 50) {
-//       output += "Move Holo Left\r\n";
-//       domeData.hpx = 30;
-//       domeData.dsp = 100;
-//       ET.sendData();
-//     }
-//     if (myPS3->getAnalogHat(LeftHatX) > 200) {
-//       output += "Move Holo Right\r\n";
-//       domeData.hpx = 150;
-//       domeData.dsp = 100;
-//       ET.sendData();
-//     }
-//     if (!(myPS3->getAnalogHat(LeftHatY) < 50 || myPS3->getAnalogHat(LeftHatY) > 200)) {
-//       // output += "Move Holo V-Center\r\n";
-//       domeData.hpy = 0;
-//       domeData.dsp = 100;
-//       ET.sendData();
-//     }
-//     if (!(myPS3->getAnalogHat(LeftHatX) < 50 || myPS3->getAnalogHat(LeftHatX) > 200)) {
-//       // output += "Move Holo H-Center\r\n";
-//       domeData.hpx = 0;
-//       domeData.dsp = 100;
-//       ET.sendData();
-//     }
-//     return true;
-  // }
+
+// /////hp movement
+//   // if (myPS3->getButtonPress(PS)) {
+//   //     if(myPS3->getButtonPress(UP)) {
+//   //       #ifdef SHADOW_DEBUG
+//   //         output += "Move Holo Up\r\n";
+//   //       #endif
+//   //       moveHoloServo(HOLO_FRONT_Y_PWM_PIN, HOLO_FRONT_Y_SERVO_MAX);
+//   //     }
+//   //     if(myPS3->getButtonPress(DOWN)) {
+//   //       #ifdef SHADOW_DEBUG
+//   //         output += "Move Holo Down\r\n";
+//   //       #endif
+//   //       moveHoloServo(HOLO_FRONT_Y_PWM_PIN, HOLO_FRONT_Y_SERVO_MIN);
+//   //     }
+//   //     if(myPS3->getButtonPress(LEFT)) {
+//   //       #ifdef SHADOW_DEBUG
+//   //         output += "Move Holo Left\r\n";
+//   //       #endif
+//   //       moveHoloServo(HOLO_FRONT_X_PWM_PIN, HOLO_FRONT_X_SERVO_MAX );
+//   //     }
+//   //     if(myPS3->getButtonPress(RIGHT)) {
+//   //       #ifdef SHADOW_DEBUG
+//   //         output += "Move Holo Right\r\n";
+//   //       #endif
+//   //       moveHoloServo(HOLO_FRONT_X_PWM_PIN, HOLO_FRONT_X_SERVO_MIN);
+//   //     }
+//   //     if (!(myPS3->getButtonPress(UP)||myPS3->getButtonPress(DOWN))) {
+//   //       moveHoloServo(HOLO_FRONT_Y_PWM_PIN, HOLO_SERVO_CTR);
+//   //     }
+//   //     if (!(myPS3->getButtonPress(RIGHT)||myPS3->getButtonPress(LEFT))) {
+//   //       moveHoloServo(HOLO_FRONT_X_PWM_PIN, HOLO_SERVO_CTR);
+//   //     }
+//   //   return true;
+//   // }
+//   // if (myPS3->getButtonPress(L1) && controllerNumber == 2) {
+//   //   //TODO:  Analog stick - can we granually control holo?
+//   //   if(myPS3->getAnalogHat(LeftHatY) < 50) {
+//   //     output += "Move Holo Up\r\n";
+//   //     moveHoloServo(HOLO_FRONT_Y_PWM_PIN, HOLO_FRONT_Y_SERVO_MAX);
+//   //   }        
+//   //   if(myPS3->getAnalogHat(LeftHatY) > 200) {
+//   //     output += "Move Holo Down\r\n";
+//   //     moveHoloServo(HOLO_FRONT_Y_PWM_PIN, HOLO_FRONT_Y_SERVO_MIN);
+//   //   }
+//   //   if(myPS3->getAnalogHat(LeftHatX) < 50) {
+//   //     output += "Move Holo Left\r\n";
+//   //     moveHoloServo(HOLO_FRONT_X_PWM_PIN, HOLO_FRONT_X_SERVO_MAX);
+//   //   }
+//   //   if(myPS3->getAnalogHat(LeftHatX) > 200) {
+//   //     output += "Move Holo Right\r\n";
+//   //     moveHoloServo(HOLO_FRONT_X_PWM_PIN, HOLO_FRONT_X_SERVO_MIN);
+//   //   }
+//   //   if (!(myPS3->getAnalogHat(LeftHatY) < 50||myPS3->getAnalogHat(LeftHatY) > 200)) {
+//   //     //output += "Move Holo V-Center\r\n";
+//   //     moveHoloServo(HOLO_FRONT_Y_PWM_PIN, HOLO_SERVO_CTR);
+//   //   }
+//   //   if (!(myPS3->getAnalogHat(LeftHatX) < 50||myPS3->getAnalogHat(LeftHatX) > 200)) {
+//   //     //output += "Move Holo H-Center\r\n";
+//   //     moveHoloServo(HOLO_FRONT_X_PWM_PIN, HOLO_SERVO_CTR);
+//   //   }
+//   //   return true;        
+//   // }
 //   return false;
 // }
 // #endif
+  
+// // #if defined(DOME_SERIAL_TEECES) || defined(DOME_I2C_TEECES)
+// // boolean teecesPs3Holoprojector(PS3BT *myPS3, int controllerNumber) {
+// //   ////turn hp light on & off
+// //   if (!(myPS3->getButtonPress(PS)) && myPS3->getButtonClick(L3)) {
+// //     if (domeData.hpl == 1) {
+// // #ifdef SHADOW_DEBUG
+// //       output += "Turning Off Holo Light\r\n";
+// // #endif
+// //       domeData.hpl = 0; // if hp light is on, turn it off
+// //       domeData.dsp = 100;
+// //       ET.sendData();
+// //     } else {
+// // #ifdef SHADOW_DEBUG
+// //       output += "Turning On Holo Light\r\n";
+// // #endif
+// //       domeData.hpl = 1; // turn hp light on
+// //       domeData.dsp = 100;
+// //       ET.sendData();
+// //     }
+// //     return true;
+// //   }
+// //
+// /////hp movement
+// //   if (myPS3->getButtonPress(PS)) {
+// //     if (myPS3->getButtonPress(UP)) {
+// // #ifdef SHADOW_DEBUG
+// //       output += "Move Holo Up\r\n";
+// // #endif
+// //       domeData.hpy = 150;
+// //       domeData.dsp = 100;
+// //       ET.sendData();
+// //     }
+// //     if (myPS3->getButtonPress(DOWN)) {
+// // #ifdef SHADOW_DEBUG
+// //       output += "Move Holo Down\r\n";
+// // #endif
+// //       domeData.hpy = 30;
+// //       domeData.dsp = 100;
+// //       ET.sendData();
+// //     }
+// //     if (myPS3->getButtonPress(LEFT)) {
+// // #ifdef SHADOW_DEBUG
+// //       output += "Move Holo Left\r\n";
+// // #endif
+// //       domeData.hpx = 30;
+// //       domeData.dsp = 100;
+// //       ET.sendData();
+// //     }
+// //     if (myPS3->getButtonPress(RIGHT)) {
+// // #ifdef SHADOW_DEBUG
+// //       output += "Move Holo Right\r\n";
+// // #endif
+// //       domeData.hpx = 150;
+// //       domeData.dsp = 100;
+// //       ET.sendData();
+// //     }
+// //     if (!(myPS3->getButtonPress(UP) || myPS3->getButtonPress(DOWN))) {
+// //       domeData.hpy = 0;
+// //       domeData.dsp = 100;
+// //       ET.sendData();
+// //     }
+// //     if (!(myPS3->getButtonPress(RIGHT) || myPS3->getButtonPress(LEFT))) {
+// //       domeData.hpx = 0;
+// //       domeData.dsp = 100;
+// //       ET.sendData();
+// //     }
+// //     return true;
+// //   }
+// //   if (myPS3->getButtonPress(L1) && controllerNumber == 2) {
+// //     // TODO:  Analog stick - can we granually control holo?
+// //     if (myPS3->getAnalogHat(LeftHatY) < 50) {
+// //       output += "Move Holo Up\r\n";
+// //       domeData.hpy = 30;
+// //       domeData.dsp = 100;
+// //       ET.sendData();
+// //     }
+// //     if (myPS3->getAnalogHat(LeftHatY) > 200) {
+// //       output += "Move Holo Down\r\n";
+// //       domeData.hpy = 150;
+// //       domeData.dsp = 100;
+// //       ET.sendData();
+// //     }
+// //     if (myPS3->getAnalogHat(LeftHatX) < 50) {
+// //       output += "Move Holo Left\r\n";
+// //       domeData.hpx = 30;
+// //       domeData.dsp = 100;
+// //       ET.sendData();
+// //     }
+// //     if (myPS3->getAnalogHat(LeftHatX) > 200) {
+// //       output += "Move Holo Right\r\n";
+// //       domeData.hpx = 150;
+// //       domeData.dsp = 100;
+// //       ET.sendData();
+// //     }
+// //     if (!(myPS3->getAnalogHat(LeftHatY) < 50 || myPS3->getAnalogHat(LeftHatY) > 200)) {
+// //       // output += "Move Holo V-Center\r\n";
+// //       domeData.hpy = 0;
+// //       domeData.dsp = 100;
+// //       ET.sendData();
+// //     }
+// //     if (!(myPS3->getAnalogHat(LeftHatX) < 50 || myPS3->getAnalogHat(LeftHatX) > 200)) {
+// //       // output += "Move Holo H-Center\r\n";
+// //       domeData.hpx = 0;
+// //       domeData.dsp = 100;
+// //       ET.sendData();
+// //     }
+// //     return true;
+//   // }
+// //   return false;
+// // }
+// // #endif
 
-boolean ps3Holoprojector(PS3BT *myPS3, int controllerNumber) {
-#ifdef DOME_I2C_ADAFRUIT
-  return adafruitPs3Holoprojector(myPS3, controllerNumber);
-#endif
-#if defined(DOME_SERIAL_TEECES) || defined(DOME_I2C_TEECES)
-  return teecesPs3Holoprojector(myPS3, controllerNumber);
-#endif
-  return false;
-}
+// boolean ps3Holoprojector(PS3BT *myPS3, int controllerNumber) {
+// #ifdef DOME_I2C_ADAFRUIT
+//   return adafruitPs3Holoprojector(myPS3, controllerNumber);
+// #endif
+// #if defined(DOME_SERIAL_TEECES) || defined(DOME_I2C_TEECES)
+//   return teecesPs3Holoprojector(myPS3, controllerNumber);
+// #endif
+// #ifdef DOME_TEECES
+//   // return adafruitPs3Holoprojector(myPS3, controllerNumber);
+// #endif
+//   return false;
+// }
 
-void moveHoloServo(int pwmPIN, int pulse) {
-  domePWM.setPWM(pwmPIN, 0, pulse);
-}
+// void moveHoloServo(int pwmPIN, int pulse) {
+//   domePwm2.setPWM(pwmPIN, 0, pulse);
+// }
 
-void holoLightFlicker(int pwmPINred, int pwmPINgreen, int pwmPINblue) {
-  int flicker = random(4096);
-  domePWM.setPWM(pwmPINred, 0, flicker*0.75);
-  domePWM.setPWM(pwmPINgreen, 0, flicker*0.75);
-  domePWM.setPWM(pwmPINblue, 0, random(4096));
-}
+// void holoLightFlicker(int pwmPINred, int pwmPINgreen, int pwmPINblue) {
+//   int flicker = random(4096);
+//   domePwm2.setPWM(pwmPINred, 0, flicker*0.75);
+//   domePwm2.setPWM(pwmPINgreen, 0, flicker*0.75);
+//   domePwm2.setPWM(pwmPINblue, 0, random(4096));
+// }
 
-void holoLightsOff() {
-  pixels.clear();
-}
+// void holoLightsOff() {
+//   pixels.clear();
+// }
 
-void holoLightsOn() {
-  pixels.fill(holoColor, 0, NUMPIXELS);
-  pixels.show();   // Send the updated pixel colors to the hardware.
-}
+// void holoLightsOn() {
+//   pixels.fill(holoColor, 0, NUMPIXELS);
+//   pixels.show();   // Send the updated pixel colors to the hardware.
+// }
 
-void randomHoloMovement(int holoprojector) {
-  //TODO: update this to work with Teeces
-  currentMillis = millis();
+// void randomHoloMovement(int holoprojector) {
+//   //TODO: update this to work with Teeces
+//   currentMillis = millis();
 
-  switch (holoprojector) {
-    case HOLO_FRONT:   
-      if (currentMillis > holoFrontRandomTime) {  
-        holoFrontRandomTime = currentMillis + random(HOLO_DELAY);
-        //TODO:  Determine range of Holoprojector X/Y better
-            //hpY=random(80,120);
-            //hpX=random(80,120); 
-        moveHoloServo(HOLO_FRONT_X_PWM_PIN, random(HOLO_FRONT_X_SERVO_MIN,HOLO_FRONT_X_SERVO_MAX));
-        moveHoloServo(HOLO_FRONT_Y_PWM_PIN, random(HOLO_FRONT_Y_SERVO_MIN,HOLO_FRONT_Y_SERVO_MAX));
-        int ledState = random(1,10);
-        switch(ledState) {
-          case 0:
-          case 1:
-          case 2:
-          case 3:
-              holoLightFrontStatus = HOLO_LED_OFF;
-              holoLightsOff();
-              break;
-          case 4:
-          case 5:
-          case 6:
-          case 7:
-              holoLightFrontStatus = HOLO_LED_ON;
-              holoLightsOn();
-              break;
-          default:
-              holoLightFrontStatus = HOLO_LED_FLICKER;
-              break;
-        }
-      }
-      if (holoLightFrontStatus == HOLO_LED_FLICKER) {
-          holoLightFlicker(HOLO_FRONT_RED_PWM_PIN, HOLO_FRONT_GREEN_PWM_PIN, HOLO_FRONT_BLUE_PWM_PIN);
-      }        
-      break;
-    case HOLO_BACK:
-      if (currentMillis > holoBackRandomTime) {  
-        holoBackRandomTime = currentMillis + random(HOLO_DELAY*1.5);
-        //TODO:  Determine range of Holoprojector X/Y better
-            //hpY=random(80,120);
-            //hpX=random(80,120); 
-        moveHoloServo(HOLO_BACK_X_PWM_PIN, random(HOLO_BACK_X_SERVO_MIN,HOLO_BACK_X_SERVO_MAX));
-        moveHoloServo(HOLO_BACK_Y_PWM_PIN, random(HOLO_BACK_Y_SERVO_MIN,HOLO_BACK_Y_SERVO_MAX));
-        int ledState = random(1,10);
-        switch(ledState) {
-          case 0:
-          case 1:
-          case 2:
-          case 3:
-          case 4:
-            holoLightBackStatus = HOLO_LED_OFF;
-            holoLightsOff();
-            break;
-          case 5:
-          case 6:
-          case 7:
-          case 8:
-            holoLightBackStatus = HOLO_LED_ON;
-            holoLightsOn();
-            break;
-          default:
-            holoLightBackStatus = HOLO_LED_FLICKER;
-            break;
-        }
-      }
-      if (holoLightBackStatus == HOLO_LED_FLICKER) {
-        holoLightFlicker(HOLO_BACK_RED_PWM_PIN, HOLO_BACK_GREEN_PWM_PIN, HOLO_BACK_BLUE_PWM_PIN);
-      }        
-      break;
-    case HOLO_TOP:  
-      if (currentMillis > holoTopRandomTime) {  
-        holoTopRandomTime = currentMillis + random(HOLO_DELAY*1.5);
-        //TODO:  Determine range of Holoprojector X/Y better
-            //hpY=random(80,120);
-            //hpX=random(80,120); 
-        moveHoloServo(HOLO_TOP_X_PWM_PIN, random(HOLO_TOP_X_SERVO_MIN,HOLO_TOP_X_SERVO_MAX));
-        moveHoloServo(HOLO_TOP_Y_PWM_PIN, random(HOLO_TOP_Y_SERVO_MIN,HOLO_TOP_Y_SERVO_MAX));
-        int ledState = random(1,10);
-        switch(ledState) {
-          case 0:
-          case 1:
-          case 2:
-          case 3:
-          case 4:
-          case 5:
-            holoLightTopStatus = HOLO_LED_OFF;
-            holoLightsOff();
-            break;
-          case 6:
-          case 7:
-          case 8:
-            holoLightTopStatus = HOLO_LED_ON;
-            holoLightsOn();
-            break;
-          default:
-            holoLightTopStatus = HOLO_LED_FLICKER;
-            break;
-        }
-      }
-      if (holoLightTopStatus == HOLO_LED_FLICKER) {
-        holoLightFlicker(HOLO_TOP_RED_PWM_PIN, HOLO_TOP_GREEN_PWM_PIN, HOLO_TOP_BLUE_PWM_PIN);
-      }        
-      break;
-  }
-}
+// //   switch (holoprojector) {
+// //     case HOLO_FRONT:   
+// //         holoFrontRandomTime = currentMillis + random(HOLO_DELAY);
+// //         //TODO:  Determine range of Holoprojector X/Y better
+// //             //hpY=random(80,120);
+// //             //hpX=random(80,120); 
+// //         moveHoloServo(HOLO_FRONT_X_PWM_PIN, random(HOLO_FRONT_X_SERVO_MIN,HOLO_FRONT_X_SERVO_MAX));
+// //         moveHoloServo(HOLO_FRONT_Y_PWM_PIN, random(HOLO_FRONT_Y_SERVO_MIN,HOLO_FRONT_Y_SERVO_MAX));
+// //         int ledState = random(1,10);
+// //         switch(ledState) {
+// //           case 0:
+// //           case 1:
+// //           case 2:
+// //           case 3:
+// //               holoLightFrontStatus = HOLO_LED_OFF;
+// //               holoLightsOff();
+// //               break;
+// //           case 4:
+// //           case 5:
+// //           case 6:
+// //           case 7:
+// //               holoLightFrontStatus = HOLO_LED_ON;
+// //               holoLightsOn();
+// //               break;
+// //           default:
+// //               holoLightFrontStatus = HOLO_LED_FLICKER;
+// //               break;
+// //         }
+// //       }
+// //       if (holoLightFrontStatus == HOLO_LED_FLICKER) {
+// //           holoLightFlicker(HOLO_FRONT_RED_PWM_PIN, HOLO_FRONT_GREEN_PWM_PIN, HOLO_FRONT_BLUE_PWM_PIN);
+// //       }        
+// //       break;
+// //     case HOLO_BACK:
+// //       if (currentMillis > holoBackRandomTime) {  
+// //         holoBackRandomTime = currentMillis + random(HOLO_DELAY*1.5);
+// //         //TODO:  Determine range of Holoprojector X/Y better
+// //             //hpY=random(80,120);
+// //             //hpX=random(80,120); 
+// //         moveHoloServo(HOLO_BACK_X_PWM_PIN, random(HOLO_BACK_X_SERVO_MIN,HOLO_BACK_X_SERVO_MAX));
+// //         moveHoloServo(HOLO_BACK_Y_PWM_PIN, random(HOLO_BACK_Y_SERVO_MIN,HOLO_BACK_Y_SERVO_MAX));
+// //         int ledState = random(1,10);
+// //         switch(ledState) {
+// //           case 0:
+// //           case 1:
+// //           case 2:
+// //           case 3:
+// //           case 4:
+// //             holoLightBackStatus = HOLO_LED_OFF;
+// //             holoLightsOff();
+// //             break;
+// //           case 5:
+// //           case 6:
+// //           case 7:
+// //           case 8:
+// //             holoLightBackStatus = HOLO_LED_ON;
+// //             holoLightsOn();
+// //             break;
+// //           default:
+// //             holoLightBackStatus = HOLO_LED_FLICKER;
+// //             break;
+// //         }
+// //       }
+// //       if (holoLightBackStatus == HOLO_LED_FLICKER) {
+// //         holoLightFlicker(HOLO_BACK_RED_PWM_PIN, HOLO_BACK_GREEN_PWM_PIN, HOLO_BACK_BLUE_PWM_PIN);
+// //       }        
+// //       break;
+// //     case HOLO_TOP:  
+// //       if (currentMillis > holoTopRandomTime) {  
+// //         holoTopRandomTime = currentMillis + random(HOLO_DELAY*1.5);
+// //         //TODO:  Determine range of Holoprojector X/Y better
+// //             //hpY=random(80,120);
+// //             //hpX=random(80,120); 
+// //         moveHoloServo(HOLO_TOP_X_PWM_PIN, random(HOLO_TOP_X_SERVO_MIN,HOLO_TOP_X_SERVO_MAX));
+// //         moveHoloServo(HOLO_TOP_Y_PWM_PIN, random(HOLO_TOP_Y_SERVO_MIN,HOLO_TOP_Y_SERVO_MAX));
+// //         int ledState = random(1,10);
+// //         switch(ledState) {
+// //           case 0:
+// //           case 1:
+// //           case 2:
+// //           case 3:
+// //           case 4:
+// //           case 5:
+// //             holoLightTopStatus = HOLO_LED_OFF;
+// //             holoLightsOff();
+// //             break;
+// //           case 6:
+// //           case 7:
+// //           case 8:
+// //             holoLightTopStatus = HOLO_LED_ON;
+// //             holoLightsOn();
+// //             break;
+// //           default:
+// //             holoLightTopStatus = HOLO_LED_FLICKER;
+// //             break;
+// //         }
+// //       }
+// //       if (holoLightTopStatus == HOLO_LED_FLICKER) {
+// //         holoLightFlicker(HOLO_TOP_RED_PWM_PIN, HOLO_TOP_GREEN_PWM_PIN, HOLO_TOP_BLUE_PWM_PIN);
+// //       }        
+// //       break;
+// //   }
+// }
 
-void holoprojector() {
-  // boolean isFrontHoloActivelyControlled = false;
-  // if (PS3Nav->PS3NavigationConnected) {
-  //   if (ps3Holoprojector(PS3Nav,1)) {
-  //     isFrontHoloActivelyControlled = true;
-  //   }
-  // }
-  if (PS3Nav2->PS3NavigationConnected) {
-    if (ps3Holoprojector(PS3Nav2,2)) {
-      // isFrontHoloActivelyControlled = true;
-    }
-  }
-  // if (!isFrontHoloActivelyControlled) {
-    randomHoloMovement(HOLO_FRONT);
-  // }
-  randomHoloMovement(HOLO_BACK);
-  randomHoloMovement(HOLO_TOP);
-}  
+// void holoprojector() {
+//   // boolean isFrontHoloActivelyControlled = false;
+//   // if (PS3Nav->PS3NavigationConnected) {
+//   //   if (ps3Holoprojector(PS3Nav,1)) {
+//   //     isFrontHoloActivelyControlled = true;
+//   //   }
+//   // }
+//   if (PS3Nav2->PS3NavigationConnected) {
+//     //TODO: Update this for Teeces
+//     if (ps3Holoprojector(PS3Nav2,2)) {
+//       // isFrontHoloActivelyControlled = true;
+//     }
+//   }
+//   // if (!isFrontHoloActivelyControlled) {
+//     // randomHoloMovement(HOLO_FRONT);
+//   // }
+//   // randomHoloMovement(HOLO_BACK);
+//   // randomHoloMovement(HOLO_TOP);
+// }  
 // =======================================================================================
 // //////////////////////////END: Holo Functions//////////////////////////////////////////
 // =======================================================================================
@@ -2161,25 +2100,25 @@ void ps3soundControl(PS3BT* myPS3, int controllerNumber) {
           Serial.println("Left controller: L1 + UP");
           // Serial.println("play sound 005");
 #endif
-          processSoundCommand(WHISTLE);
+          processSoundCommand(FIVE);
         } else if (myPS3->getButtonClick(RIGHT)) {
 #ifdef SHADOW_DEBUG
           Serial.println("Left controller: L1 + RIGHT");
           // Serial.println("play sound 006");
 #endif
-          processSoundCommand(WHISTLE);
+          processSoundCommand(SIX);
         } else if (myPS3->getButtonClick(DOWN)) {
 #ifdef SHADOW_DEBUG
           Serial.println("Left controller: L1 + DOWN");
           // Serial.println("play sound 007");
 #endif
-          processSoundCommand(WHISTLE);
+          processSoundCommand(SEVEN);
         } else if (myPS3->getButtonClick(LEFT)) {
 #ifdef SHADOW_DEBUG
           Serial.println("Left controller: L1 + LEFT");
           // Serial.println("play sound 008");
 #endif
-          processSoundCommand(RAZZ);
+          processSoundCommand(EIGHT);
         }
       } else if (myPS3->getButtonPress(L2)) {
         if (myPS3->getButtonClick(UP)) {
@@ -2187,25 +2126,25 @@ void ps3soundControl(PS3BT* myPS3, int controllerNumber) {
           Serial.println("Left controller: L2 + UP");
           // Serial.println("play sound 009");
 #endif
-          processSoundCommand(BEEP);
+          processSoundCommand(NINE);
         } else if (myPS3->getButtonClick(RIGHT)) {
 #ifdef SHADOW_DEBUG
           Serial.println("Left controller: L2 + RIGHT");
           // Serial.println("play sound 010");
 #endif
-          processSoundCommand(BEEP);
+          processSoundCommand(TEN);
         } else if (myPS3->getButtonClick(DOWN)) {
 #ifdef SHADOW_DEBUG
           Serial.println("Left controller: :L2 + DOWN");
           // Serial.println("play sound 011");
 #endif
-          processSoundCommand(BEEP);
+          processSoundCommand(ELEVEN);
         } else if (myPS3->getButtonClick(LEFT)) {
 #ifdef SHADOW_DEBUG
           Serial.println("Left controller: L2 + LEFT");
           // Serial.println("play sound 012");
 #endif
-          processSoundCommand(BEEP);
+          processSoundCommand(TWELVE);
         }
       }
       break;
