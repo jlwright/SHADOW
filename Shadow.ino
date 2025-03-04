@@ -125,12 +125,6 @@
 #include <HardwareSerial.h>
 #include <USBAPI.h>
 
-//#ifdef  SOUND_ROGUE_RMP3
-//TODO:add rMP3 support
-//#endif
-//#ifdef  SOUND_RASBERRYPI
-//TODO:add Raspberry Pi Sound support
-//#endif
 #pragma endregion
 
 #pragma region Settings
@@ -319,7 +313,6 @@ Sabertooth *SyR = new Sabertooth(SYREN_ADDR, Serial2); // declare Syren object
 //     SEND_DATA_STRUCTURE domeData;//give a name to the group of data
 // #endif 
 
-//TODO: modify this for pixel setup
 // #ifdef DOME_I2C_ADAFRUIT    
 //   const int HOLO_FRONT = 1;
 //   const int HOLO_BACK = 2;
@@ -574,7 +567,6 @@ void loop() {
 //           firstMessage = false;
 //           SerialBT.println(F("Hello from S.H.A.D.O.W.")); // Send welcome message
 //       }
-//       //TODO:  Process input from the SerialBT
 //       //if (SerialBT.available())
 //       //    Serial.write(SerialBT.read());
 //   } else {
@@ -1421,7 +1413,6 @@ void automateDome() {
 // //////////////////////////Settings Functions///////////////////////////////////////////
 // =======================================================================================
 void ps3ToggleSettings(PS3BT* myPS3, int controllerNumber) {
-  //TODO: if controllerNumber == 1 stop feet, if controllerNumber == 2 stop dome
   if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(L3)) {
     //Quick Shutdown of PS3 Controller
     output += "\r\nDisconnecting the controller.\r\n";
@@ -1491,7 +1482,11 @@ void ps3ToggleSettings(PS3BT* myPS3, int controllerNumber) {
         #ifdef SHADOW_DEBUG
           output += "Toggle Dome automation on/off\r\n";
         #endif
-        sendSerialDataToDome(TOGGLEDOMEAUTOMATION);
+        if (isAutomateDomeOn) {
+          isAutomateDomeOn = false;
+        } else {
+          isAutomateDomeOn = true;
+        }
       }
       if (myPS3->getButtonPress(PS) && myPS3->getButtonClick(RIGHT)) {
         #ifdef SHADOW_DEBUG
@@ -1639,7 +1634,6 @@ void moveUtilArm(int arm, int position) {
 // =======================================================================================
 // #ifdef DOME_I2C_ADAFRUIT           
 // boolean adafruitPs3Holoprojector(PS3BT* myPS3, int controllerNumber) {
-//   // TODO: add switch for controllerNumber
 //   // turn hp light on & off
 //   if( !(myPS3->getButtonPress(PS)) && myPS3->getButtonClick(L3)) {
 //     if (holoLightFrontStatus != HOLO_LED_OFF) {
@@ -1872,7 +1866,6 @@ void moveUtilArm(int arm, int position) {
 // }
 
 // void randomHoloMovement(int holoprojector) {
-//   //TODO: update this to work with Teeces
 //   currentMillis = millis();
 
 // //   switch (holoprojector) {
@@ -1987,7 +1980,6 @@ void moveUtilArm(int arm, int position) {
 //   //   }
 //   // }
 //   if (PS3Nav2->PS3NavigationConnected) {
-//     //TODO: Update this for Teeces
 //     if (ps3Holoprojector(PS3Nav2,2)) {
 //       // isFrontHoloActivelyControlled = true;
 //     }
